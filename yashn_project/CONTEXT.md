@@ -27,7 +27,7 @@ present, consistent personality rather than a generic assistant.
 - [x] Phase 1: Core AI engine (fallback chain + soul prompt)
 - [x] Phase 2: Chat UI
 - [x] Phase 3: Cinematic opening animation
-- [ ] Phase 4: Conversation memory
+- [x] Phase 4: Conversation memory
 - [ ] Phase 5: PWA basics
 - [ ] Phase 6: Deployed to Vercel
 
