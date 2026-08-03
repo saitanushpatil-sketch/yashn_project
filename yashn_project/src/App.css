@@ -1,43 +1,93 @@
-:root {
-  --bg-color: #1a1025; /* deep plum/indigo */
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  
-  --yashn-bg: rgba(255, 255, 255, 0.05);
-  --user-bg: rgba(160, 100, 255, 0.2);
+/* App.css - Main Layout & Backgrounds */
+
+.app-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  display: flex;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body, html {
+/* --- Animated Background Layers --- */
+.cinematic-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-color);
-  color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow: hidden; /* Prevent body scrolling, chat handles scrolling */
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 0%, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
-#root {
-  height: 100%;
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+.orb-top-right {
+  top: -10%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: var(--gold-primary);
+}
+
+.orb-bottom-left {
+  bottom: -20%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
+  background: var(--gold-secondary);
+  animation-delay: -10s;
+  opacity: 0.1;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-2vw, 3vh) scale(1.05); }
+  100% { transform: translate(3vw, -2vh) scale(0.95); }
+}
+
+/* Fog Layer */
+.fog-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
   width: 100%;
+  height: 50%;
+  background: linear-gradient(to top, rgba(5,5,5,0.8), transparent);
+  pointer-events: none;
+  z-index: 1;
 }
 
-.app-container {
+/* Vignette */
+.vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* --- Main Content Area --- */
+.main-content {
+  position: relative;
+  z-index: 10;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* responsive for mobile browsers */
-  max-width: 600px;
+  height: 100%;
+  max-width: 800px;
   margin: 0 auto;
-  position: relative;
-  background-color: var(--bg-color);
 }
 
 /* Header */
@@ -45,189 +95,104 @@ body, html {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: rgba(26, 16, 37, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--glass-border);
-  z-index: 10;
+  padding: 24px 32px;
+  background: transparent;
+  z-index: 20;
 }
 
 .header-title {
-  font-size: 1.2rem;
-  font-weight: 300;
-  letter-spacing: 1px;
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  color: var(--gold-primary);
+  text-transform: uppercase;
 }
 
-.clear-btn {
+.header-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.icon-btn {
   background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--gold-primary);
+  cursor: none;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
   border-radius: 50%;
-  transition: all 0.2s;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.7;
 }
 
-.clear-btn:hover {
-  color: white;
+.icon-btn:hover {
+  opacity: 1;
   background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: 0 0 15px var(--glass-glow);
+  transform: scale(1.05);
 }
 
 /* Chat Window */
 .chat-window {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 32px;
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
-}
-
-.empty-state {
-  margin: auto;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  font-weight: 300;
-  letter-spacing: 0.5px;
+  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
 
 .messages-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding-bottom: 20px;
-}
-
-.message-wrapper {
-  display: flex;
-  width: 100%;
-}
-
-.message-wrapper.user {
-  justify-content: flex-end;
-}
-
-.message-wrapper.assistant {
-  justify-content: flex-start;
-}
-
-.message-bubble {
-  max-width: 85%;
-  padding: 12px 18px;
-  border-radius: 20px;
-  font-size: 1rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-}
-
-.user .message-bubble {
-  background: var(--user-bg);
-  border-bottom-right-radius: 4px;
-}
-
-.assistant .message-bubble {
-  background: var(--yashn-bg);
-  border-bottom-left-radius: 4px;
-}
-
-/* Typing Indicator */
-.typing-indicator {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 16px 20px;
-}
-
-.typing-indicator span {
-  width: 6px;
-  height: 6px;
-  background-color: var(--text-secondary);
-  border-radius: 50%;
-  animation: typing 1.4s infinite ease-in-out both;
-}
-
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  gap: 24px;
+  padding: 40px 0;
 }
 
 /* Message Input */
-.message-input-container {
-  padding: 12px 16px;
-  display: flex;
-  gap: 12px;
-  background: rgba(26, 16, 37, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--glass-border);
-  align-items: flex-end;
-  /* Ensure it doesn't get covered by mobile keyboard */
+.input-area-wrapper {
+  padding: 20px 32px 32px;
   position: relative;
-  z-index: 10;
+  z-index: 20;
 }
 
-.message-input-container textarea {
-  flex: 1;
+/* Glass Panels */
+.glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 10px 16px;
-  color: white;
-  font-family: inherit;
-  font-size: 1rem;
-  resize: none;
-  outline: none;
-  line-height: 1.4;
-  max-height: 120px;
-  transition: border-color 0.2s;
-  /* Prevent zoom on focus in iOS */
-  font-size: 16px; 
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
 }
 
-.message-input-container textarea:focus {
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.message-input-container textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.send-button {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
+/* Typing Stars */
+.typing-stars {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
+  gap: 6px;
+  padding: 12px 16px;
+  color: var(--gold-primary);
 }
 
-.send-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+.star-icon {
+  animation: pulse-star 1.5s infinite ease-in-out;
+  opacity: 0.3;
 }
 
-.send-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.star-icon:nth-child(2) {
+  animation-delay: 0.3s;
 }
 
-.send-button svg {
-  margin-left: -2px; /* optical alignment */
-  margin-top: 2px;
+.star-icon:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes pulse-star {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 4px var(--gold-primary)); }
 }

@@ -1,26 +1,34 @@
-import { useState, useEffect } from 'react'
-import ChatWindow from './components/ChatWindow'
-import MessageInput from './components/MessageInput'
-import IntroAnimation from './components/IntroAnimation'
-import { sendMessage } from './lib/aiProvider'
-import { saveConversation, loadConversation, clearConversation } from './lib/storage'
-import './App.css'
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ChatWindow from './components/ChatWindow';
+import MessageInput from './components/MessageInput';
+import IntroAnimation from './components/IntroAnimation';
+import Cursor from './components/Cursor';
+import AudioEngine from './components/AudioEngine';
+import Sidebar from './components/Sidebar';
+import { sendMessage } from './lib/aiProvider';
+import { saveConversation, loadConversation, clearConversation } from './lib/storage';
+import { Menu, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import './App.css';
 
 function App() {
-  const [messages, setMessages] = useState(loadConversation)
-  const [isTyping, setIsTyping] = useState(false)
-  const [showIntro, setShowIntro] = useState(false)
+  const [messages, setMessages] = useState(loadConversation);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  const audioEngineRef = useRef(null);
 
   useEffect(() => {
-    const hasPlayed = sessionStorage.getItem('yashn_intro_played') === 'true'
+    const hasPlayed = sessionStorage.getItem('yashn_intro_played') === 'true';
     if (!hasPlayed) {
-      setShowIntro(true)
+      setShowIntro(true);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    saveConversation(messages)
-  }, [messages])
+    saveConversation(messages);
+  }, [messages]);
 
   const handleSend = async (content) => {
     const userMessage = { role: 'user', content };
@@ -33,6 +41,11 @@ function App() {
     try {
       const response = await sendMessage(newHistory);
       setMessages([...newHistory, { role: 'assistant', content: response }]);
+      
+      // Play received sound effect
+      if (audioEngineRef.current) {
+        audioEngineRef.current.playClick();
+      }
     } catch (e) {
       setMessages([...newHistory, { 
         role: 'assistant', 
@@ -44,28 +57,84 @@ function App() {
   }
 
   const handleClear = () => {
+    // Only ask for confirmation if there are messages
+    if (messages.length === 0) return;
+    
     if (window.confirm("Start a fresh conversation? This can't be undone.")) {
       clearConversation();
       setMessages([]);
+      if (audioEngineRef.current) {
+        audioEngineRef.current.playClick();
+      }
     }
   }
 
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen(prev => !prev);
+    if (audioEngineRef.current) {
+      audioEngineRef.current.playClick();
+    }
+  }, []);
+
   return (
-    <div className="app-container">
-      {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
-      <header className="chat-header">
-        <div className="header-title">Yashñ</div>
-        <button className="clear-btn" onClick={handleClear} aria-label="Start fresh" title="Start fresh">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18"></path>
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-          </svg>
-        </button>
-      </header>
-      <ChatWindow messages={messages} isTyping={isTyping} />
-      <MessageInput onSend={handleSend} disabled={isTyping} />
-    </div>
+    <>
+      <Cursor />
+      <AudioEngine ref={audioEngineRef} />
+      
+      <div className="app-wrapper">
+        {/* Animated Cinematic Background */}
+        <div className="cinematic-bg">
+          <div className="bg-orb orb-top-right"></div>
+          <div className="bg-orb orb-bottom-left"></div>
+          <div className="fog-layer"></div>
+          <div className="vignette"></div>
+        </div>
+
+        {showIntro ? (
+          <IntroAnimation 
+            onComplete={() => setShowIntro(false)} 
+            audioRef={audioEngineRef}
+          />
+        ) : (
+          <>
+            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+            
+            <div className="main-content">
+              <header className="chat-header">
+                <button className="icon-btn" onClick={toggleSidebar} aria-label="Menu">
+                  <Menu size={24} />
+                </button>
+                
+                <motion.div 
+                  className="header-title"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                >
+                  Yashñ
+                </motion.div>
+                
+                <div className="header-actions">
+                  <button 
+                    className="icon-btn" 
+                    onClick={handleClear} 
+                    aria-label="Start fresh" 
+                    title="Start fresh"
+                    disabled={messages.length === 0}
+                    style={{ opacity: messages.length === 0 ? 0.3 : 0.7 }}
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </header>
+
+              <ChatWindow messages={messages} isTyping={isTyping} />
+              <MessageInput onSend={handleSend} disabled={isTyping} audioEngineRef={audioEngineRef} />
+            </div>
+          </>
+        )}
+      </div>
+    </>
   )
 }
 

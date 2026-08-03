@@ -1,123 +1,134 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './IntroAnimation.css';
 
-export default function IntroAnimation({ onComplete }) {
+export default function IntroAnimation({ onComplete, audioRef }) {
   const [phase, setPhase] = useState(0);
   const [exiting, setExiting] = useState(false);
-  
-  const audioRef = useRef(null);
 
-  // Generate 80 stars exactly once
+  // Generate a field of tiny, slowly drifting stars
   const stars = useMemo(() => {
-    return Array.from({ length: 80 }).map((_, i) => {
-      // Random position
-      const top = Math.random() * 100;
-      const left = Math.random() * 100;
-      // Staggered delay for phase 1 appearance (between 0s and 2.5s)
-      const appearDelay = Math.random() * 2.5; 
-      // Size
-      const size = Math.random() * 2 + 1;
-      
-      // Exit drift coordinates (random dx/dy from -300px to 300px)
-      const dx = `${(Math.random() - 0.5) * 600}px`;
-      const dy = `${(Math.random() - 0.5) * 600}px`;
-
-      return { id: i, top, left, appearDelay, size, dx, dy };
-    });
+    return Array.from({ length: 60 }).map((_, i) => ({
+      id: i,
+      top: Math.random() * 100,
+      left: Math.random() * 100,
+      delay: Math.random() * 4,
+      size: Math.random() * 1.5 + 0.5,
+    }));
   }, []);
 
   useEffect(() => {
-    // Phase 1 (300ms)
-    const t1 = setTimeout(() => setPhase(1), 300);
-    // Phase 2 (2800ms)
-    const t2 = setTimeout(() => setPhase(2), 2800);
-    // Phase 3 (3600ms)
-    const t3 = setTimeout(() => setPhase(3), 3600);
-    // Phase 4 (4200ms)
-    const t4 = setTimeout(() => setPhase(4), 4200);
-    // Phase 5 (5200ms)
-    const t5 = setTimeout(() => setPhase(5), 5200);
-    // Phase 6 (6000ms)
-    const t6 = setTimeout(() => setPhase(6), 6000);
+    const sequence = [
+      { p: 1, time: 1000 }, // Pitch black to first stars
+      { p: 2, time: 3500 }, // Golden ambient light fades in
+      { p: 3, time: 6000 }, // Yashñ logo fades in
+      { p: 4, time: 7500 }, // Subtitle fades in
+      { p: 5, time: 9000 }, // Enter button appears
+    ];
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      clearTimeout(t5);
-      clearTimeout(t6);
-    };
+    const timers = sequence.map(seq => 
+      setTimeout(() => setPhase(seq.p), seq.time)
+    );
+
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   const handleEnterClick = useCallback(() => {
     if (exiting) return;
     setExiting(true);
     
-    // Play audio
-    if (audioRef.current) {
-      audioRef.current.volume = 0.5;
-      audioRef.current.play().catch(e => console.log('Audio play error', e));
+    // Start ambient audio via ref if provided
+    if (audioRef && audioRef.current) {
+      audioRef.current.toggleAmbience();
     }
 
+    // Smooth exit transition
     setTimeout(() => {
       sessionStorage.setItem('yashn_intro_played', 'true');
       onComplete();
-    }, 1400);
-  }, [exiting, onComplete]);
+    }, 2000);
+  }, [exiting, onComplete, audioRef]);
 
   return (
-    <div className={`intro-container ${exiting ? 'exit' : ''}`}>
-      {/* Audio element - public domain magical track */}
-      <audio 
-        ref={audioRef} 
-        src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_b8c9103636.mp3?filename=magical-twinkle-and-glitter-106518.mp3" 
-        preload="auto"
-      />
-
-      {/* Stars Layer */}
-      <div className="stars-layer">
-        {stars.map((star) => (
-          <div 
-            key={star.id} 
-            className={`star ${phase >= 1 ? 'visible' : ''}`}
-            style={{
-              top: `${star.top}%`,
-              left: `${star.left}%`,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              transitionDelay: exiting ? '0s' : `${star.appearDelay}s`,
-              '--dx': star.dx,
-              '--dy': star.dy
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Center Orbs & Rings */}
-      <div className="center-visuals">
-        <div className={`blur-halo ${phase >= 3 ? 'visible' : ''}`}></div>
-        <div className={`ring ring-outer ${phase >= 3 ? 'visible' : ''}`}></div>
-        <div className={`ring ring-inner ${phase >= 3 ? 'visible' : ''}`}></div>
-        <div className={`aurora-core ${phase >= 2 ? 'visible' : ''}`}></div>
-      </div>
-
-      {/* Typography and Button */}
-      <div className="text-container">
-        <span className={`brand-name ${phase >= 4 ? 'visible' : ''}`}>Yashñ</span>
-        <span className={`tagline ${phase >= 5 ? 'visible' : ''}`}>you're not the last option here</span>
-        
-        <button 
-          className={`enter-btn ${phase >= 6 ? 'visible' : ''}`}
-          onClick={handleEnterClick}
-          disabled={phase < 6 || exiting}
+    <AnimatePresence>
+      {!exiting && (
+        <motion.div 
+          className="cinematic-intro-container"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: 1.05, filter: 'blur(20px)' }}
+          transition={{ duration: 2, ease: "easeInOut" }}
         >
-          Enter
-        </button>
-      </div>
+          {/* Star Field */}
+          <div className="intro-stars-layer">
+            {stars.map((star) => (
+              <motion.div
+                key={star.id}
+                className="intro-star"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: phase >= 1 ? [0, 0.8, 0.4, 0.8] : 0 }}
+                transition={{
+                  opacity: { delay: star.delay, duration: 4, repeat: Infinity, repeatType: "mirror" }
+                }}
+                style={{
+                  top: `${star.top}%`,
+                  left: `${star.left}%`,
+                  width: `${star.size}px`,
+                  height: `${star.size}px`,
+                }}
+              />
+            ))}
+          </div>
 
-      {/* Bloom on exit */}
-      <div className={`radial-bloom ${exiting ? 'visible' : ''}`}></div>
-    </div>
+          {/* Golden Ambient Glow */}
+          <motion.div 
+            className="intro-ambient-glow"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: phase >= 2 ? 1 : 0 }}
+            transition={{ duration: 4, ease: "easeIn" }}
+          />
+
+          <div className="intro-content">
+            <motion.h1 
+              className="intro-logo"
+              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+              animate={{ 
+                opacity: phase >= 3 ? 1 : 0, 
+                y: phase >= 3 ? 0 : 20,
+                filter: phase >= 3 ? 'blur(0px)' : 'blur(10px)'
+              }}
+              transition={{ duration: 2.5, ease: "easeOut" }}
+            >
+              Yashñ
+            </motion.h1>
+
+            <motion.p 
+              className="intro-subtitle"
+              initial={{ opacity: 0, y: 10, filter: 'blur(5px)' }}
+              animate={{ 
+                opacity: phase >= 4 ? 1 : 0, 
+                y: phase >= 4 ? 0 : 10,
+                filter: phase >= 4 ? 'blur(0px)' : 'blur(5px)'
+              }}
+              transition={{ duration: 2, ease: "easeOut" }}
+            >
+              Your companion.
+            </motion.p>
+
+            <motion.button 
+              className="intro-enter-btn"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: phase >= 5 ? 1 : 0, scale: phase >= 5 ? 1 : 0.9 }}
+              transition={{ duration: 1.5 }}
+              onClick={handleEnterClick}
+              disabled={phase < 5 || exiting}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(212,175,120,0.1)' }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Enter
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
