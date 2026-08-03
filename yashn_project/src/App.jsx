@@ -3,9 +3,20 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
-
+import { sendMessage } from './lib/aiProvider'
 function App() {
   const [count, setCount] = useState(0)
+  const [aiResponse, setAiResponse] = useState('')
+
+  const testAi = async () => {
+    setAiResponse('Loading...')
+    try {
+      const response = await sendMessage([{ role: 'user', content: "hey, I'm having a rough day" }])
+      setAiResponse(response)
+    } catch (e) {
+      setAiResponse('Error: ' + e.message)
+    }
+  }
 
   return (
     <>
@@ -28,6 +39,15 @@ function App() {
         >
           Count is {count}
         </button>
+        <button type="button" onClick={testAi} style={{ marginTop: '10px', padding: '10px 20px', cursor: 'pointer' }}>
+          Test AI
+        </button>
+        {aiResponse && (
+          <div style={{ marginTop: '20px', padding: '15px', background: '#222', color: '#fff', borderRadius: '8px', textAlign: 'left', maxWidth: '600px', margin: '20px auto' }}>
+            <strong>Yashñ:</strong>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{aiResponse}</p>
+          </div>
+        )}
       </section>
 
       <div className="ticks"></div>

@@ -24,7 +24,7 @@ present, consistent personality rather than a generic assistant.
 - src/App.jsx — main app shell
 
 ## Build phases (check which are done)
-- [ ] Phase 1: Core AI engine (fallback chain + soul prompt)
+- [x] Phase 1: Core AI engine (fallback chain + soul prompt)
 - [ ] Phase 2: Chat UI
 - [ ] Phase 3: Cinematic opening animation
 - [ ] Phase 4: Conversation memory
