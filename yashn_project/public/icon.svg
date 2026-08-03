@@ -1,0 +1,12 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#1a1025" />
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#a064ff" stroke-width="8" stroke-dasharray="10 20"/>
+  <circle cx="256" cy="256" r="120" fill="url(#grad)" />
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="70%" stop-color="#a064ff" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#1a1025" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+</svg>

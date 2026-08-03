@@ -28,7 +28,7 @@ present, consistent personality rather than a generic assistant.
 - [x] Phase 2: Chat UI
 - [x] Phase 3: Cinematic opening animation
 - [x] Phase 4: Conversation memory
-- [ ] Phase 5: PWA basics
+- [x] Phase 5: PWA basics
 - [ ] Phase 6: Deployed to Vercel
 
 ## Rules for any AI agent working on this repo
