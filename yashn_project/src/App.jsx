@@ -3,7 +3,7 @@ import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
 import IntroAnimation from './components/IntroAnimation';
 import LandingPage from './components/LandingPage';
-import Auth from './components/Auth';
+import NamePrompt from './components/NamePrompt';
 import Cursor from './components/Cursor';
 import AudioEngine from './components/AudioEngine';
 import Sidebar from './components/Sidebar';
@@ -11,56 +11,24 @@ import { sendMessage } from './lib/aiProvider';
 import { saveConversation, loadConversation, clearConversation } from './lib/storage';
 import { Menu, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { auth, isFirebaseConfigured } from './lib/firebase';
-import { onAuthStateChanged, isSignInWithEmailLink } from 'firebase/auth';
 import './App.css';
 
 function App() {
-  const [appState, setAppState] = useState('LOADING'); // LOADING | LANDING | INTRO | AUTH | CHAT
-  const [user, setUser] = useState(null);
-  
+  const storedName = localStorage.getItem('yashn_username');
+  const [appState, setAppState] = useState('LANDING');
+  const [userName, setUserName] = useState(storedName || null);
+
   const [messages, setMessages] = useState(loadConversation);
   const [isTyping, setIsTyping] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  const audioEngineRef = useRef(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
-  // Authentication & Initial Routing
+  const audioRef = useRef(null);
+
   useEffect(() => {
-    if (!auth || !isFirebaseConfigured) {
-      // Firebase not configured, default to landing page
-      setAppState('LANDING');
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      
-      // If we are just verifying an email link, go straight to AUTH
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        setAppState('AUTH');
-        return;
-      }
-
-      // If we are logged in, go to CHAT directly, else LANDING
-      if (currentUser) {
-        setAppState('CHAT');
-      } else {
-        setAppState('LANDING');
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Manage Audio based on App State
-  useEffect(() => {
-    if (audioEngineRef.current) {
-      if (appState === 'LANDING') {
-        audioEngineRef.current.startAmbience?.(); // Ensure it plays on mount if user interacted
-      } else if (appState === 'AUTH' || appState === 'CHAT') {
-        audioEngineRef.current.stopAmbience();
-      }
+    if (!audioRef.current) return;
+    if (appState === 'CHAT') {
+      audioRef.current.transitionTo?.('chat');
     }
   }, [appState]);
 
@@ -68,155 +36,173 @@ function App() {
     saveConversation(messages);
   }, [messages]);
 
+  const handleFirstInteraction = useCallback(() => {
+    if (!hasInteracted && appState === 'LANDING') {
+      setHasInteracted(true);
+      if (audioRef.current?.startAmbience) {
+        audioRef.current.startAmbience('landing');
+      }
+    }
+  }, [hasInteracted, appState]);
+
   const handleSend = async (content) => {
     const userMessage = { role: 'user', content };
     const newHistory = [...messages, userMessage];
-    
     setMessages(newHistory);
     setIsTyping(true);
 
     try {
       const response = await sendMessage(newHistory);
       setMessages([...newHistory, { role: 'assistant', content: response }]);
-      if (audioEngineRef.current) audioEngineRef.current.playClick();
     } catch (e) {
-      setMessages([...newHistory, { 
-        role: 'assistant', 
+      setMessages([...newHistory, {
+        role: 'assistant',
         content: "I'm having trouble finding the words right now — give me a moment and try again?"
       }]);
     } finally {
       setIsTyping(false);
     }
-  }
+  };
 
   const handleClear = () => {
     if (messages.length === 0) return;
     if (window.confirm("Start a fresh conversation? This can't be undone.")) {
       clearConversation();
       setMessages([]);
-      if (audioEngineRef.current) audioEngineRef.current.playClick();
     }
-  }
+  };
 
-  const toggleSidebar = useCallback(() => {
+  const toggleSidebar = () => {
     setIsSidebarOpen(prev => !prev);
-    if (audioEngineRef.current) audioEngineRef.current.playClick();
-  }, []);
+  };
 
-  const handleMeetClick = () => {
+  const handleEnter = () => {
+    // If they haven't interacted yet, this is their first interaction
+    handleFirstInteraction();
+    
     setAppState('INTRO');
-    if (audioEngineRef.current) {
-      // Browsers require interaction to play audio, this is the perfect time
-      audioEngineRef.current.toggleAmbience(); 
+    if (audioRef.current?.transitionTo) {
+      audioRef.current.transitionTo('intro');
     }
   };
 
   const handleIntroComplete = () => {
-    // If somehow they are logged in during intro, go to CHAT, else AUTH
-    setAppState(user ? 'CHAT' : 'AUTH');
+    if (userName && userName !== 'Guest') {
+      setAppState('CHAT');
+    } else {
+      setAppState('NAME');
+    }
   };
 
-  const handleAuthSuccess = (loggedUser) => {
-    setUser(loggedUser);
+  const handleNameComplete = (name) => {
+    setUserName(name);
     setAppState('CHAT');
   };
 
-  if (appState === 'LOADING') {
-    return <div className="app-wrapper" style={{ backgroundColor: '#050505' }}></div>;
-  }
-
   return (
-    <>
+    <div onClick={handleFirstInteraction} onKeyDown={handleFirstInteraction} tabIndex="0" style={{ outline: 'none' }}>
       <Cursor />
-      <AudioEngine ref={audioEngineRef} />
-      
+      <AudioEngine ref={audioRef} />
+
       <div className="app-wrapper">
-        {/* Animated Cinematic Background - Only visible in CHAT (or specific views) */}
         <AnimatePresence>
           {appState === 'CHAT' && (
-            <motion.div 
-              className="cinematic-bg"
+            <motion.div
+              className="chat-bg"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 2 }}
+              transition={{ duration: 3 }}
             >
-              <div className="bg-orb orb-top-right"></div>
-              <div className="bg-orb orb-bottom-left"></div>
-              <div className="fog-layer"></div>
-              <div className="vignette"></div>
+              <div className="bg-orb orb-1" />
+              <div className="bg-orb orb-2" />
+              <div className="bg-aurora" />
+              <div className="bg-vignette" />
             </motion.div>
           )}
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {appState === 'LANDING' && (
-            <motion.div key="landing" exit={{ opacity: 0 }} transition={{ duration: 1 }}>
-              <LandingPage onMeetClick={handleMeetClick} />
+            <motion.div key="landing" exit={{ opacity: 0 }} transition={{ duration: 1.5 }}>
+              <LandingPage onEnter={handleEnter} />
             </motion.div>
           )}
 
           {appState === 'INTRO' && (
             <motion.div key="intro">
-              <IntroAnimation 
-                onComplete={handleIntroComplete} 
-                audioRef={audioEngineRef}
+              <IntroAnimation
+                onComplete={handleIntroComplete}
+                audioRef={audioRef}
               />
             </motion.div>
           )}
 
-          {appState === 'AUTH' && (
-            <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}>
-              <Auth onAuthSuccess={handleAuthSuccess} />
+          {appState === 'NAME' && (
+            <motion.div
+              key="name"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5 }}
+            >
+              <NamePrompt onComplete={handleNameComplete} />
             </motion.div>
           )}
 
           {appState === 'CHAT' && (
-            <motion.div 
-              key="chat" 
+            <motion.div
+              key="chat"
               className="main-content"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 2 }} // Slow fade into chat
+              transition={{ duration: 2.5 }}
             >
               <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-              
+
               <header className="chat-header">
                 <button className="icon-btn" onClick={toggleSidebar} aria-label="Menu">
-                  <Menu size={24} />
+                  <Menu size={20} />
                 </button>
-                
-                <motion.div 
+
+                <motion.div
                   className="header-title"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 1, ease: 'easeOut', delay: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 1.5, delay: 0.8 }}
                 >
                   Yashñ
                 </motion.div>
-                
+
                 <div className="header-actions">
-                  <button 
-                    className="icon-btn" 
-                    onClick={handleClear} 
-                    aria-label="Start fresh" 
+                  <button
+                    className="icon-btn"
+                    onClick={handleClear}
+                    aria-label="Start fresh"
                     title="Start fresh"
                     disabled={messages.length === 0}
-                    style={{ opacity: messages.length === 0 ? 0.3 : 0.7 }}
+                    style={{ opacity: messages.length === 0 ? 0.15 : 0.5 }}
                   >
-                    <Trash2 size={20} />
+                    <Trash2 size={17} />
                   </button>
                 </div>
               </header>
 
-              <ChatWindow messages={messages} isTyping={isTyping} />
-              <MessageInput onSend={handleSend} disabled={isTyping} audioEngineRef={audioEngineRef} />
+              <ChatWindow
+                messages={messages}
+                isTyping={isTyping}
+                userName={userName}
+              />
+              <MessageInput
+                onSend={handleSend}
+                disabled={isTyping}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;

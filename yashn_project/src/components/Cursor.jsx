@@ -1,97 +1,81 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export default function Cursor() {
-  const [mousePosition, setMousePosition] = useState({ x: -100, y: -100 });
-  const [isHovering, setIsHovering] = useState(false);
+  const [pos, setPos] = useState({ x: -100, y: -100 });
+  const [hovering, setHovering] = useState(false);
+  const trailRef = useRef([]);
 
   useEffect(() => {
-    // Only initialize on devices that support hover (desktop)
-    const isDesktop = window.matchMedia("(pointer: fine)").matches;
+    const isDesktop = window.matchMedia('(pointer: fine)').matches;
     if (!isDesktop) return;
 
-    const updateMousePosition = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+    const onMove = (e) => {
+      setPos({ x: e.clientX, y: e.clientY });
     };
 
-    const handleMouseOver = (e) => {
-      // Check if we are hovering over an interactive element
-      if (
-        e.target.tagName.toLowerCase() === 'button' ||
-        e.target.tagName.toLowerCase() === 'a' ||
-        e.target.closest('button') ||
-        e.target.closest('a') ||
-        e.target.tagName.toLowerCase() === 'textarea'
-      ) {
-        setIsHovering(true);
-      } else {
-        setIsHovering(false);
-      }
+    const onOver = (e) => {
+      const t = e.target;
+      setHovering(
+        t.tagName === 'BUTTON' || t.tagName === 'A' || t.tagName === 'INPUT' ||
+        t.tagName === 'TEXTAREA' || !!t.closest('button') || !!t.closest('a')
+      );
     };
 
-    window.addEventListener('mousemove', updateMousePosition);
-    window.addEventListener('mouseover', handleMouseOver);
-
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseover', onOver);
     return () => {
-      window.removeEventListener('mousemove', updateMousePosition);
-      window.removeEventListener('mouseover', handleMouseOver);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseover', onOver);
     };
   }, []);
 
-  // Don't render if it's offscreen (initial load)
-  if (mousePosition.x === -100) return null;
+  if (pos.x === -100) return null;
 
   return (
     <>
+      {/* Core dot — shimmers */}
       <motion.div
-        className="cursor-dot"
         animate={{
-          x: mousePosition.x - 4,
-          y: mousePosition.y - 4,
-          scale: isHovering ? 1.5 : 1,
+          x: pos.x - 5,
+          y: pos.y - 5,
+          scale: hovering ? 1.8 : 1,
         }}
-        transition={{
-          type: "tween",
-          ease: "backOut",
-          duration: 0.1
-        }}
+        transition={{ type: 'tween', ease: 'backOut', duration: 0.08 }}
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '8px',
-          height: '8px',
-          backgroundColor: 'var(--gold-primary)',
+          width: 10,
+          height: 10,
           borderRadius: '50%',
+          background: 'var(--gold)',
           pointerEvents: 'none',
-          zIndex: 9999,
-          boxShadow: '0 0 10px var(--gold-primary)',
+          zIndex: 99999,
+          boxShadow: '0 0 12px var(--gold), 0 0 30px var(--gold-glow)',
+          mixBlendMode: 'screen',
         }}
       />
+      {/* Outer halo */}
       <motion.div
-        className="cursor-halo"
         animate={{
-          x: mousePosition.x - 20,
-          y: mousePosition.y - 20,
-          scale: isHovering ? 1.5 : 1,
-          opacity: isHovering ? 0.8 : 0.4
+          x: pos.x - 22,
+          y: pos.y - 22,
+          scale: hovering ? 1.6 : 1,
+          opacity: hovering ? 0.7 : 0.25,
         }}
-        transition={{
-          type: "spring",
-          stiffness: 150,
-          damping: 20,
-          mass: 0.5
-        }}
+        transition={{ type: 'spring', stiffness: 120, damping: 18, mass: 0.4 }}
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '40px',
-          height: '40px',
-          border: '1px solid var(--gold-secondary)',
+          width: 44,
+          height: 44,
           borderRadius: '50%',
+          border: '1px solid var(--gold)',
           pointerEvents: 'none',
-          zIndex: 9998,
+          zIndex: 99998,
+          boxShadow: hovering ? '0 0 20px var(--gold-glow)' : 'none',
         }}
       />
     </>

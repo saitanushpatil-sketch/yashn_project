@@ -1,145 +1,259 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
 
-// Generative ambient audio using Web Audio API
+/**
+ * AudioEngine — Redesigned for pure emotional storytelling.
+ * 
+ * 1. LANDING: Cinematic, slow-evolving. Felt piano, warm strings, air choir, tiny bells.
+ * 2. INTRO: Swells to an emotional peak, then fades completely.
+ * 3. CHAT: Complete silence.
+ */
 const AudioEngine = forwardRef((props, ref) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.3); // Low ambient volume
-  const audioCtxRef = useRef(null);
-  const gainNodeRef = useRef(null);
-  const oscillatorsRef = useRef([]);
+  const ctxRef = useRef(null);
+  const masterRef = useRef(null);
+  const nodesRef = useRef([]);
+  const timersRef = useRef([]);
+  const playingRef = useRef(false);
+  const modeRef = useRef(null); // 'landing' | 'intro' | 'chat'
 
-  // Setup Web Audio Context
   useEffect(() => {
-    // We defer initialization until user interaction or explicitly called
-    return () => {
-      stopAmbience();
-    };
+    return () => cleanup();
   }, []);
 
-  const initAudio = () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      gainNodeRef.current = audioCtxRef.current.createGain();
-      gainNodeRef.current.connect(audioCtxRef.current.destination);
-      gainNodeRef.current.gain.value = volume;
+  const init = () => {
+    if (!ctxRef.current || ctxRef.current.state === 'closed') {
+      ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (!masterRef.current || masterRef.current.context !== ctxRef.current) {
+      masterRef.current = ctxRef.current.createGain();
+      masterRef.current.gain.value = 0;
+      masterRef.current.connect(ctxRef.current.destination);
+    }
+    if (ctxRef.current.state === 'suspended') {
+      ctxRef.current.resume();
     }
   };
 
-  const startAmbience = () => {
-    initAudio();
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    
-    // Create a warm pad sound using multiple sine/triangle waves with slow LFOs
-    const ctx = audioCtxRef.current;
-    const now = ctx.currentTime;
-    
-    // Clear old oscillators if any
-    stopAmbience();
-    
-    const freqs = [110, 164.81, 220, 277.18]; // A2, E3, A3, C#4 (A major chord)
-    
-    freqs.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const oscGain = ctx.createGain();
-      
-      osc.type = i % 2 === 0 ? 'sine' : 'triangle';
-      osc.frequency.value = freq;
-      
-      // Slow envelope
-      oscGain.gain.setValueAtTime(0, now);
-      oscGain.gain.linearRampToValueAtTime(0.1 / freqs.length, now + 5 + i); // 5s fade in
-      
-      // Detune slightly for warmth
-      osc.detune.value = (Math.random() - 0.5) * 10;
-      
-      osc.connect(oscGain);
-      oscGain.connect(gainNodeRef.current);
-      
-      osc.start();
-      oscillatorsRef.current.push({ osc, gain: oscGain });
+  const cleanup = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    nodesRef.current.forEach(n => {
+      try { n.stop?.(); } catch(e) {}
+      try { n.disconnect?.(); } catch(e) {}
     });
-    
-    setIsPlaying(true);
+    nodesRef.current = [];
+  };
+
+  const playTone = (freq, type, volume, attack, sustain, release, delay = 0) => {
+    if (!ctxRef.current) return;
+    const ctx = ctxRef.current;
+    const now = ctx.currentTime + delay;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.detune.value = (Math.random() - 0.5) * 6; // Slight organic drift
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume, now + attack);
+    gain.gain.setValueAtTime(volume, now + attack + sustain);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + sustain + release);
+
+    osc.connect(gain);
+    gain.connect(masterRef.current);
+    osc.start(now);
+    osc.stop(now + attack + sustain + release + 0.1);
+    nodesRef.current.push(osc, gain);
+  };
+
+  // ── LANDING THEME ──
+  // Felt piano, warm violin, air choir, distant bells. Like watching rain.
+  const startLanding = () => {
+    // D Major Pentatonic
+    const pianoNotes = [293.66, 329.63, 369.99, 440, 493.88]; // D4, E4, F#4, A4, B4
+    const stringNotes = [146.83, 220, 184.99]; // D3, A3, F#3
+
+    // Very slow, evolving strings (Cello/Violin feel)
+    const playStrings = () => {
+      if (!playingRef.current || modeRef.current !== 'landing') return;
+      const note = stringNotes[Math.floor(Math.random() * stringNotes.length)];
+      playTone(note, 'sine', 0.02, 6, 8, 10); // Very slow attack and release
+      
+      const next = 15000 + Math.random() * 10000;
+      timersRef.current.push(setTimeout(playStrings, next));
+    };
+
+    // Felt piano (Triangle wave with soft envelope)
+    const playPiano = () => {
+      if (!playingRef.current || modeRef.current !== 'landing') return;
+      const note = pianoNotes[Math.floor(Math.random() * pianoNotes.length)];
+      playTone(note, 'triangle', 0.03, 0.5, 1, 6);
+      
+      // Sometimes play a double note
+      if (Math.random() > 0.6) {
+        const harmony = pianoNotes[Math.floor(Math.random() * pianoNotes.length)];
+        playTone(harmony, 'triangle', 0.02, 0.6, 1, 5, 0.4);
+      }
+
+      const next = 6000 + Math.random() * 8000;
+      timersRef.current.push(setTimeout(playPiano, next));
+    };
+
+    // Tiny bells occasionally
+    const playBells = () => {
+      if (!playingRef.current || modeRef.current !== 'landing') return;
+      if (Math.random() > 0.4) {
+        const bellNote = [1174.66, 1479.98][Math.floor(Math.random() * 2)]; // D6, F#6
+        playTone(bellNote, 'sine', 0.01, 0.1, 0.2, 8);
+      }
+      const next = 12000 + Math.random() * 15000;
+      timersRef.current.push(setTimeout(playBells, next));
+    };
+
+    // Choir pad drone (D4 + A4)
+    playTone(293.66, 'sine', 0.015, 8, 999, 5); 
+    playTone(440, 'sine', 0.01, 10, 999, 5);
+
+    timersRef.current.push(setTimeout(playStrings, 1000));
+    timersRef.current.push(setTimeout(playPiano, 4000));
+    timersRef.current.push(setTimeout(playBells, 15000));
+  };
+
+  // ── INTRO THEME ──
+  // Builds to an emotional peak
+  const startIntro = () => {
+    // Deep cello foundation
+    playTone(73.42, 'sine', 0.03, 5, 8, 6); // D2
+    playTone(146.83, 'sine', 0.02, 6, 8, 6); // D3
+
+    // Swelling strings
+    playTone(369.99, 'sine', 0.02, 8, 5, 5); // F#4
+    playTone(440, 'sine', 0.02, 9, 4, 5);    // A4
+    playTone(587.33, 'sine', 0.015, 10, 3, 5); // D5 (Peak)
+
+    // Piano melody building up
+    playTone(293.66, 'triangle', 0.04, 0.3, 0.5, 4, 2);
+    playTone(329.63, 'triangle', 0.04, 0.3, 0.5, 4, 4);
+    playTone(440, 'triangle', 0.04, 0.3, 0.5, 4, 6);
+    playTone(587.33, 'triangle', 0.05, 0.3, 0.5, 5, 9.5); // "Yashñ" appears
+
+    // Bells at the peak
+    playTone(1174.66, 'sine', 0.02, 0.1, 0.2, 6, 9.5);
+    playTone(1479.98, 'sine', 0.015, 0.1, 0.2, 6, 12); // "I remember."
+  };
+
+  // ── Public API ──
+  const startAmbience = (mode = 'landing') => {
+    // If chat, absolute silence
+    if (mode === 'chat') {
+      stopAmbience();
+      return;
+    }
+
+    init();
+    cleanup();
+    modeRef.current = mode;
+    playingRef.current = true;
+
+    const ctx = ctxRef.current;
+    const now = ctx.currentTime;
+    masterRef.current.gain.cancelScheduledValues(now);
+    masterRef.current.gain.setValueAtTime(0, now);
+    masterRef.current.gain.linearRampToValueAtTime(1, now + 4);
+
+    if (mode === 'landing') startLanding();
+    else if (mode === 'intro') startIntro();
   };
 
   const stopAmbience = () => {
-    if (audioCtxRef.current && oscillatorsRef.current.length > 0) {
-      const now = audioCtxRef.current.currentTime;
-      oscillatorsRef.current.forEach(({ osc, gain }) => {
-        gain.gain.linearRampToValueAtTime(0, now + 2); // 2s fade out
-        setTimeout(() => {
-          try {
-            osc.stop();
-            osc.disconnect();
-          } catch(e) {}
-        }, 2000);
-      });
-      oscillatorsRef.current = [];
+    if (!ctxRef.current || !masterRef.current) {
+      playingRef.current = false;
+      return;
     }
-    setIsPlaying(false);
+    const now = ctxRef.current.currentTime;
+    masterRef.current.gain.cancelScheduledValues(now);
+    masterRef.current.gain.setValueAtTime(masterRef.current.gain.value, now);
+    masterRef.current.gain.linearRampToValueAtTime(0, now + 4);
+
+    setTimeout(() => cleanup(), 4500);
+    playingRef.current = false;
   };
 
-  const playClickSound = () => {
-    initAudio();
-    const ctx = audioCtxRef.current;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+  const transitionTo = (mode) => {
+    if (mode === 'chat') {
+      stopAmbience();
+      return;
+    }
+
+    if (!ctxRef.current || !masterRef.current) {
+      startAmbience(mode);
+      return;
+    }
     
+    const now = ctxRef.current.currentTime;
+    masterRef.current.gain.cancelScheduledValues(now);
+    masterRef.current.gain.setValueAtTime(masterRef.current.gain.value, now);
+    masterRef.current.gain.linearRampToValueAtTime(0, now + 2);
+
+    setTimeout(() => {
+      cleanup();
+      startAmbience(mode);
+    }, 2200);
+  };
+
+  const setVolume = (val) => {
+    if (!masterRef.current || !ctxRef.current) return;
+    const now = ctxRef.current.currentTime;
+    masterRef.current.gain.cancelScheduledValues(now);
+    masterRef.current.gain.linearRampToValueAtTime(val, now + 0.5);
+  };
+
+  // ── UI Sounds ──
+  const playClick = () => {
+    init();
+    const ctx = ctxRef.current;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.1);
-    
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.start();
-    osc.stop(ctx.currentTime + 0.1);
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.exponentialRampToValueAtTime(293.66, now + 0.06);
+    g.gain.setValueAtTime(0.04, now); // Softer
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.08);
   };
 
-  const playMessageSound = () => {
-    initAudio();
-    const ctx = audioCtxRef.current;
+  const playMessage = () => {
+    init();
+    const ctx = ctxRef.current;
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
+    const g = ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-    osc.frequency.linearRampToValueAtTime(554.37, ctx.currentTime + 0.15); // C#5
-    
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.05);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.start();
-    osc.stop(ctx.currentTime + 0.3);
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.linearRampToValueAtTime(587.33, now + 0.12);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.02, now + 0.04); // Very soft
+    g.gain.linearRampToValueAtTime(0, now + 0.2);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.25);
   };
 
-  // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
-    toggleAmbience: () => {
-      if (isPlaying) stopAmbience();
-      else startAmbience();
-    },
-    playClick: playClickSound,
-    playMessage: playMessageSound,
-    setVolume: (val) => {
-      setVolume(val);
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.setValueAtTime(val, audioCtxRef.current.currentTime);
-      }
-    },
-    isPlaying
+    startAmbience,
+    stopAmbience,
+    transitionTo,
+    setVolume,
+    playClick,
+    playMessage,
   }));
 
-  return null; // This component has no UI
+  return null;
 });
 
 export default AudioEngine;
