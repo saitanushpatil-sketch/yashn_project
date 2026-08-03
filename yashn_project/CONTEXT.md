@@ -25,7 +25,7 @@ present, consistent personality rather than a generic assistant.
 
 ## Build phases (check which are done)
 - [x] Phase 1: Core AI engine (fallback chain + soul prompt)
-- [ ] Phase 2: Chat UI
+- [x] Phase 2: Chat UI
 - [ ] Phase 3: Cinematic opening animation
 - [ ] Phase 4: Conversation memory
 - [ ] Phase 5: PWA basics
