@@ -1,12 +1,12 @@
 /* IntroAnimation.css */
 
-.cinematic-intro-container {
+.intro-container-phase2 {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100dvh;
-  background-color: var(--bg-primary); /* Pitch black / Deep dark */
+  height: 100vh;
+  background-color: #000; /* Pitch black */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,8 +14,7 @@
   overflow: hidden;
 }
 
-/* Stars */
-.intro-stars-layer {
+.stars-layer {
   position: absolute;
   top: 0;
   left: 0;
@@ -25,30 +24,50 @@
   z-index: 1;
 }
 
-.intro-star {
+.tiny-star {
   position: absolute;
   background-color: var(--gold-primary);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--gold-primary);
+  box-shadow: 0 0 8px var(--gold-primary);
 }
 
-/* Golden Ambient Glow */
-.intro-ambient-glow {
+.center-orb-wrapper {
   position: absolute;
-  top: 40%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80vmin;
-  height: 80vmin;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 175, 120, 0.15) 0%, transparent 70%);
-  filter: blur(40px);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 2;
   pointer-events: none;
 }
 
-/* Typography & Button */
-.intro-content {
+.large-golden-orb {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 120, 0.4) 0%, transparent 60%);
+}
+
+.orbit-particle-container {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.orbit-particle {
+  width: 3px;
+  height: 3px;
+  background-color: var(--gold-secondary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--gold-secondary);
+}
+
+.intro-text-content {
   position: relative;
   z-index: 10;
   display: flex;
@@ -57,36 +76,21 @@
   text-align: center;
 }
 
-.intro-logo {
+.intro-title-text {
   font-family: var(--font-heading);
-  font-size: clamp(4rem, 8vw, 7rem);
+  font-size: clamp(4rem, 10vw, 8rem);
   color: var(--gold-primary);
   margin: 0;
-  letter-spacing: 2px;
-  font-weight: 400;
-  text-shadow: 0 0 40px rgba(212, 175, 120, 0.3);
+  font-weight: 300;
+  letter-spacing: 4px;
+  text-shadow: 0 0 40px rgba(212, 175, 120, 0.4);
 }
 
-.intro-subtitle {
+.intro-subtitle-text {
   font-family: var(--font-body);
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   color: var(--text-secondary);
   font-weight: 300;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   margin-top: 1rem;
-}
-
-.intro-enter-btn {
-  margin-top: 4rem;
-  padding: 12px 32px;
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  border-radius: 30px;
-  color: var(--gold-primary);
-  font-family: var(--font-body);
-  font-size: 1rem;
-  letter-spacing: 1px;
-  cursor: none; /* Relies on custom cursor */
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 20px rgba(212, 175, 120, 0.05);
 }

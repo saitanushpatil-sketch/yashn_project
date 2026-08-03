@@ -1,29 +1,44 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './IntroAnimation.css';
 
 export default function IntroAnimation({ onComplete, audioRef }) {
   const [phase, setPhase] = useState(0);
-  const [exiting, setExiting] = useState(false);
 
-  // Generate a field of tiny, slowly drifting stars
+  // Generate field of stars
   const stars = useMemo(() => {
-    return Array.from({ length: 60 }).map((_, i) => ({
+    return Array.from({ length: 40 }).map((_, i) => ({
       id: i,
       top: Math.random() * 100,
       left: Math.random() * 100,
-      delay: Math.random() * 4,
-      size: Math.random() * 1.5 + 0.5,
+      delay: Math.random() * 5, // Appear one by one
+      size: Math.random() * 2 + 1,
+    }));
+  }, []);
+
+  // Generate orbiting particles
+  const orbitParticles = useMemo(() => {
+    return Array.from({ length: 15 }).map((_, i) => ({
+      id: i,
+      angle: Math.random() * 360,
+      radius: Math.random() * 50 + 100, // 100px to 150px orbit
+      duration: Math.random() * 10 + 15, // Slow orbit
+      delay: Math.random() * 2,
     }));
   }, []);
 
   useEffect(() => {
+    if (audioRef?.current) {
+      // Swell music for intro
+      audioRef.current.setVolume(0.5);
+    }
+
     const sequence = [
-      { p: 1, time: 1000 }, // Pitch black to first stars
-      { p: 2, time: 3500 }, // Golden ambient light fades in
-      { p: 3, time: 6000 }, // Yashñ logo fades in
-      { p: 4, time: 7500 }, // Subtitle fades in
-      { p: 5, time: 9000 }, // Enter button appears
+      { p: 1, time: 2000 }, // Stars appear one by one
+      { p: 2, time: 5000 }, // Large golden orb forms
+      { p: 3, time: 8000 }, // "Yashñ" fades in
+      { p: 4, time: 10000 }, // Subtitle appears
+      { p: 5, time: 14000 }, // Trigger dissolve out
     ];
 
     const timers = sequence.map(seq => 
@@ -31,41 +46,38 @@ export default function IntroAnimation({ onComplete, audioRef }) {
     );
 
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [audioRef]);
 
-  const handleEnterClick = useCallback(() => {
-    if (exiting) return;
-    setExiting(true);
-    
-    // Start ambient audio via ref if provided
-    if (audioRef && audioRef.current) {
-      audioRef.current.toggleAmbience();
+  useEffect(() => {
+    if (phase === 5) {
+      if (audioRef?.current) {
+        // Fade out music completely
+        audioRef.current.stopAmbience();
+      }
+      setTimeout(() => {
+        onComplete();
+      }, 3000); // Wait for dissolve animation to finish
     }
-
-    // Smooth exit transition
-    setTimeout(() => {
-      sessionStorage.setItem('yashn_intro_played', 'true');
-      onComplete();
-    }, 2000);
-  }, [exiting, onComplete, audioRef]);
+  }, [phase, onComplete, audioRef]);
 
   return (
     <AnimatePresence>
-      {!exiting && (
+      {phase < 5 && (
         <motion.div 
-          className="cinematic-intro-container"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.05, filter: 'blur(20px)' }}
-          transition={{ duration: 2, ease: "easeInOut" }}
+          className="intro-container-phase2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, filter: 'blur(30px)' }}
+          transition={{ duration: 3, ease: "easeInOut" }}
         >
-          {/* Star Field */}
-          <div className="intro-stars-layer">
+          {/* Stars */}
+          <div className="stars-layer">
             {stars.map((star) => (
               <motion.div
                 key={star.id}
-                className="intro-star"
+                className="tiny-star"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: phase >= 1 ? [0, 0.8, 0.4, 0.8] : 0 }}
+                animate={{ opacity: phase >= 1 ? [0, 1, 0.5, 1] : 0 }}
                 transition={{
                   opacity: { delay: star.delay, duration: 4, repeat: Infinity, repeatType: "mirror" }
                 }}
@@ -79,53 +91,62 @@ export default function IntroAnimation({ onComplete, audioRef }) {
             ))}
           </div>
 
-          {/* Golden Ambient Glow */}
-          <motion.div 
-            className="intro-ambient-glow"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: phase >= 2 ? 1 : 0 }}
-            transition={{ duration: 4, ease: "easeIn" }}
-          />
-
-          <div className="intro-content">
-            <motion.h1 
-              className="intro-logo"
-              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+          <div className="center-orb-wrapper">
+            {/* Golden Orb */}
+            <motion.div 
+              className="large-golden-orb"
+              initial={{ scale: 0, opacity: 0, filter: 'blur(50px)' }}
               animate={{ 
-                opacity: phase >= 3 ? 1 : 0, 
-                y: phase >= 3 ? 0 : 20,
-                filter: phase >= 3 ? 'blur(0px)' : 'blur(10px)'
+                scale: phase >= 2 ? 1 : 0, 
+                opacity: phase >= 2 ? 1 : 0,
+                filter: phase >= 2 ? 'blur(20px)' : 'blur(50px)'
               }}
-              transition={{ duration: 2.5, ease: "easeOut" }}
+              transition={{ duration: 5, ease: "easeOut" }}
+            />
+
+            {/* Orbiting Particles */}
+            <AnimatePresence>
+              {phase >= 2 && orbitParticles.map((particle) => (
+                <motion.div
+                  key={particle.id}
+                  className="orbit-particle-container"
+                  initial={{ opacity: 0, rotate: particle.angle }}
+                  animate={{ 
+                    opacity: 1, 
+                    rotate: particle.angle + 360 
+                  }}
+                  transition={{ 
+                    opacity: { duration: 2, delay: particle.delay },
+                    rotate: { duration: particle.duration, repeat: Infinity, ease: "linear" }
+                  }}
+                >
+                  <div 
+                    className="orbit-particle" 
+                    style={{ transform: `translateY(-${particle.radius}px)` }} 
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          <div className="intro-text-content">
+            <motion.h1 
+              className="intro-title-text"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: phase >= 3 ? 1 : 0 }}
+              transition={{ duration: 3, ease: "easeInOut" }}
             >
               Yashñ
             </motion.h1>
 
             <motion.p 
-              className="intro-subtitle"
-              initial={{ opacity: 0, y: 10, filter: 'blur(5px)' }}
-              animate={{ 
-                opacity: phase >= 4 ? 1 : 0, 
-                y: phase >= 4 ? 0 : 10,
-                filter: phase >= 4 ? 'blur(0px)' : 'blur(5px)'
-              }}
-              transition={{ duration: 2, ease: "easeOut" }}
+              className="intro-subtitle-text"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: phase >= 4 ? 1 : 0 }}
+              transition={{ duration: 3, ease: "easeInOut" }}
             >
               Your companion.
             </motion.p>
-
-            <motion.button 
-              className="intro-enter-btn"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: phase >= 5 ? 1 : 0, scale: phase >= 5 ? 1 : 0.9 }}
-              transition={{ duration: 1.5 }}
-              onClick={handleEnterClick}
-              disabled={phase < 5 || exiting}
-              whileHover={{ scale: 1.05, backgroundColor: 'rgba(212,175,120,0.1)' }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Enter
-            </motion.button>
           </div>
         </motion.div>
       )}

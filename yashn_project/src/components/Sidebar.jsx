@@ -1,14 +1,28 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, Clock, Music, Mic, X } from 'lucide-react';
+import { Settings, Clock, MessageSquarePlus, BrainCircuit, User, LogOut, X } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function Sidebar({ isOpen, onClose }) {
   const menuItems = [
-    { icon: Clock, label: 'Recent Memories' },
-    { icon: Mic, label: 'Voice Settings' },
-    { icon: Music, label: 'Audio & Ambience' },
-    { icon: Settings, label: 'Preferences' }
+    { icon: MessageSquarePlus, label: 'New Chat' },
+    { icon: Clock, label: 'History' },
+    { icon: BrainCircuit, label: 'Memory' },
+    { icon: Settings, label: 'Settings' },
+    { icon: User, label: 'Profile' }
   ];
+
+  const handleLogout = async () => {
+    try {
+      if (auth) {
+        await signOut(auth);
+      }
+      window.location.reload(); // Quick way to reset the app state to LANDING
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -89,17 +103,30 @@ export default function Sidebar({ isOpen, onClose }) {
                   <span style={{ fontWeight: 300 }}>{item.label}</span>
                 </motion.button>
               ))}
-            </div>
 
-            <div style={{
-              marginTop: 'auto',
-              padding: '24px 0 0',
-              borderTop: '1px solid var(--glass-border)',
-              color: 'var(--text-tertiary)',
-              fontSize: '0.9rem',
-              textAlign: 'center'
-            }}>
-              v2.0 Cinematic Edition
+              <motion.button
+                onClick={handleLogout}
+                whileHover={{ x: 8, backgroundColor: 'rgba(255, 107, 107, 0.1)' }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  color: '#ff6b6b',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '1.1rem',
+                  cursor: 'none',
+                  textAlign: 'left',
+                  marginTop: 'auto'
+                }}
+              >
+                <LogOut size={20} color="#ff6b6b" />
+                <span style={{ fontWeight: 300 }}>Logout</span>
+              </motion.button>
             </div>
           </motion.div>
         </>
