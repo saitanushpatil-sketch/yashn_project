@@ -1,0 +1,91 @@
+.intro-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100dvh;
+  background-color: var(--bg-color, #1a1025);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.intro-container.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.orb {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(160,100,255,0.4) 60%, transparent 100%);
+  box-shadow: 0 0 40px rgba(160,100,255,0.5);
+  opacity: 0;
+  animation: orb-fade-in 1.5s ease-out forwards, orb-pulse 3s infinite alternate ease-in-out;
+}
+
+.brand-name {
+  margin-top: 40px;
+  font-size: 2.2rem;
+  font-weight: 300;
+  color: #ffffff;
+  letter-spacing: 2px;
+  opacity: 0;
+  animation: fade-in 1s ease-out forwards;
+  animation-delay: 1.5s;
+}
+
+.tagline {
+  margin-top: 16px;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.5px;
+  opacity: 0;
+  animation: fade-in 1s ease-out forwards;
+  animation-delay: 2.5s;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes orb-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes orb-pulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(160,100,255,0.4);
+  }
+  to {
+    transform: scale(1.1);
+    box-shadow: 0 0 50px rgba(160,100,255,0.7);
+  }
+}

@@ -1,12 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ChatWindow from './components/ChatWindow'
 import MessageInput from './components/MessageInput'
+import IntroAnimation from './components/IntroAnimation'
 import { sendMessage } from './lib/aiProvider'
 import './App.css'
 
 function App() {
   const [messages, setMessages] = useState([])
   const [isTyping, setIsTyping] = useState(false)
+  const [showIntro, setShowIntro] = useState(false)
+
+  useEffect(() => {
+    const hasPlayed = sessionStorage.getItem('yashn_intro_played') === 'true'
+    if (!hasPlayed) {
+      setShowIntro(true)
+    }
+  }, [])
 
   const handleSend = async (content) => {
     const userMessage = { role: 'user', content };
@@ -31,6 +40,7 @@ function App() {
 
   return (
     <div className="app-container">
+      {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
       <ChatWindow messages={messages} isTyping={isTyping} />
       <MessageInput onSend={handleSend} disabled={isTyping} />
     </div>
