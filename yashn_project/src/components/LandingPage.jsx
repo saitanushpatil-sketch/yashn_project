@@ -1,337 +1,491 @@
-import React, { useRef, useMemo, useEffect, useState } from 'react';
-import { motion, useScroll, AnimatePresence } from 'framer-motion';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './LandingPage.css';
 
-function ShootingStar() {
-  const [isActive, setIsActive] = useState(false);
-  const [style, setStyle] = useState({});
+/* ═══════════════════════════════════════════════════════════════
+   Canvas Starfield — dense, layered, with depth and parallax
+   Three layers: distant dim stars, mid stars, close bright stars
+   ═══════════════════════════════════════════════════════════════ */
+function useStarfield(canvasRef) {
+  const animRef = useRef(null);
+  const layersRef = useRef({ far: [], mid: [], near: [] });
+  const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
   useEffect(() => {
-    const trigger = () => {
-      setIsActive(true);
-      setStyle({
-        top: `${Math.random() * 30}%`,
-        left: `${20 + Math.random() * 60}%`,
-        angle: 30 + Math.random() * 30, 
-      });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-      setTimeout(() => setIsActive(false), 2000); 
-      
-      const nextTime = 30000 + Math.random() * 30000; // 30-60s
-      setTimeout(trigger, nextTime);
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Far layer — tiny, dim, slow twinkle (depth)
+    layersRef.current.far = Array.from({ length: 500 }, () => ({
+      x: Math.random() * w * 1.2 - w * 0.1,
+      y: Math.random() * h * 1.2 - h * 0.1,
+      size: Math.random() * 0.8 + 0.2,
+      baseAlpha: Math.random() * 0.25 + 0.05,
+      twinkleSpeed: 0.001 + Math.random() * 0.003,
+      twinklePhase: Math.random() * Math.PI * 2,
+      parallax: 0.3,
+    }));
+
+    // Mid layer — medium, some gold
+    layersRef.current.mid = Array.from({ length: 200 }, () => ({
+      x: Math.random() * w * 1.1 - w * 0.05,
+      y: Math.random() * h * 1.1 - h * 0.05,
+      size: Math.random() * 1.2 + 0.4,
+      baseAlpha: Math.random() * 0.4 + 0.15,
+      twinkleSpeed: 0.003 + Math.random() * 0.006,
+      twinklePhase: Math.random() * Math.PI * 2,
+      isGold: Math.random() < 0.15,
+      parallax: 0.7,
+    }));
+
+    // Near layer — bright, warm, strong parallax
+    layersRef.current.near = Array.from({ length: 60 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      size: Math.random() * 1.8 + 0.8,
+      baseAlpha: Math.random() * 0.5 + 0.3,
+      twinkleSpeed: 0.005 + Math.random() * 0.01,
+      twinklePhase: Math.random() * Math.PI * 2,
+      isGold: Math.random() < 0.3,
+      parallax: 1.5,
+    }));
+
+    // Smooth mouse tracking
+    const handleMouse = (e) => {
+      mouseRef.current.targetX = (e.clientX / w - 0.5) * 2;
+      mouseRef.current.targetY = (e.clientY / h - 0.5) * 2;
+    };
+    window.addEventListener('mousemove', handleMouse, { passive: true });
+
+    const drawLayer = (stars, mx, my) => {
+      for (const s of stars) {
+        s.twinklePhase += s.twinkleSpeed;
+        const alpha = s.baseAlpha * (0.4 + 0.6 * Math.sin(s.twinklePhase));
+        if (alpha < 0.02) continue;
+
+        const px = s.x + mx * s.parallax * 8;
+        const py = s.y + my * s.parallax * 8;
+
+        if (s.isGold) {
+          ctx.fillStyle = `rgba(212,175,55,${alpha})`;
+          if (s.size > 1) {
+            ctx.shadowColor = `rgba(212,175,55,${alpha * 0.5})`;
+            ctx.shadowBlur = 4;
+          }
+        } else {
+          ctx.fillStyle = `rgba(220,225,235,${alpha})`;
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.beginPath();
+        ctx.arc(px, py, s.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
     };
 
-    const firstTime = 10000 + Math.random() * 15000;
-    const timeout = setTimeout(trigger, firstTime);
-    
-    return () => clearTimeout(timeout);
+    const draw = () => {
+      // Smooth interpolation
+      const m = mouseRef.current;
+      m.x += (m.targetX - m.x) * 0.04;
+      m.y += (m.targetY - m.y) * 0.04;
+
+      ctx.clearRect(0, 0, w, h);
+
+      drawLayer(layersRef.current.far, m.x, m.y);
+      drawLayer(layersRef.current.mid, m.x, m.y);
+      drawLayer(layersRef.current.near, m.x, m.y);
+
+      animRef.current = requestAnimationFrame(draw);
+    };
+
+    animRef.current = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', handleMouse);
+    };
+  }, [canvasRef]);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Hero Subtitle Sequence — cinematic text transitions
+   ═══════════════════════════════════════════════════════════════ */
+function HeroSubtitles() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const seq = [
+      { p: 1, t: 3000 },
+      { p: 2, t: 7000 },
+      { p: 3, t: 11000 },
+      { p: 4, t: 15500 },
+    ];
+    const timers = seq.map(({ p, t }) => setTimeout(() => setPhase(p), t));
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   return (
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          className="shooting-star"
-          initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
-          animate={{ 
-            opacity: [0, 1, 1, 0], 
-            scale: [0, 1, 1, 0],
-            x: 600, 
-            y: 600 * Math.tan((style.angle * Math.PI) / 180) 
-          }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.8, ease: "easeIn" }}
-          style={{
-            top: style.top,
-            left: style.left,
-            transform: `rotate(${style.angle}deg)`,
-          }}
-        />
-      )}
-    </AnimatePresence>
+    <div className="hero-subtitle-area">
+      <AnimatePresence mode="wait">
+        {phase === 1 && (
+          <motion.p
+            key="s1"
+            className="hero-subtitle"
+            initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+            transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            Not another AI.
+          </motion.p>
+        )}
+        {phase === 2 && (
+          <motion.p
+            key="s2"
+            className="hero-subtitle-accent"
+            initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+            transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            Someone who remembers.
+          </motion.p>
+        )}
+        {(phase === 3 || phase === 4) && (
+          <motion.div
+            key="s3"
+            initial={{ opacity: 0, y: 15, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 3, ease: [0.22, 1, 0.36, 1] }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
+          >
+            <p className="hero-subtitle">Conversations disappear.</p>
+            <motion.p
+              className="hero-subtitle-accent"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 2, delay: 1.2 }}
+            >
+              People shouldn't.
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
-// Helper to get time of day for greeting
-function getTimeGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'good morning';
-  if (hour < 17) return 'good afternoon';
-  return 'good evening';
-}
-
+/* ═══════════════════════════════════════════════════════════════
+   Landing Page — Cinematic Film Opening
+   ═══════════════════════════════════════════════════════════════ */
 export default function LandingPage({ onEnter }) {
-  const containerRef = useRef(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef(null);
+  const audioRef = useRef(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioLoaded, setAudioLoaded] = useState(false);
 
-  // Read name from localStorage
   const storedName = localStorage.getItem('yashn_username');
   const isReturning = storedName && storedName !== 'Guest';
 
-  const tinyStarsShadow = useMemo(() => {
-    let shadow = '';
-    for(let i=0; i<400; i++) {
-      shadow += `${Math.random() * 100}vw ${Math.random() * 200}vh rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2}) ${i===399?'':','}`;
-    }
-    return shadow;
-  }, []);
+  useStarfield(canvasRef);
 
-  const mediumStarsShadow = useMemo(() => {
-    let shadow = '';
-    for(let i=0; i<100; i++) {
-      shadow += `${Math.random() * 100}vw ${Math.random() * 200}vh rgba(212, 175, 55, ${Math.random() * 0.5 + 0.1}) ${i===99?'':','}`;
+  const startAudio = useCallback(() => {
+    if (audioPlaying || !audioRef.current) return;
+    const audio = audioRef.current;
+    audio.volume = 0;
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.then(() => {
+        setAudioPlaying(true);
+        let vol = 0;
+        const fadeIn = setInterval(() => {
+          vol = Math.min(vol + 0.008, 0.2);
+          audio.volume = vol;
+          if (vol >= 0.2) clearInterval(fadeIn);
+        }, 50);
+      }).catch(() => {});
     }
-    return shadow;
-  }, []);
-
-  const particles = useMemo(() => {
-    return Array.from({ length: 40 }).map((_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      dur: 20 + Math.random() * 40,
-      delay: Math.random() * 20,
-    }));
-  }, []);
+  }, [audioPlaying]);
 
   useEffect(() => {
-    const handleMove = (e) => {
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      setMousePos({
-        x: (e.clientX - cx) / cx,
-        y: (e.clientY - cy) / cy,
-      });
+    const handler = () => startAudio();
+    document.addEventListener('click', handler, { once: true, passive: true });
+    document.addEventListener('scroll', handler, { once: true, passive: true });
+    document.addEventListener('keydown', handler, { once: true, passive: true });
+    return () => {
+      document.removeEventListener('click', handler);
+      document.removeEventListener('scroll', handler);
+      document.removeEventListener('keydown', handler);
     };
-    window.addEventListener('mousemove', handleMove);
-    return () => window.removeEventListener('mousemove', handleMove);
-  }, []);
+  }, [startAudio]);
+
+  const handleEnter = useCallback(() => {
+    if (audioRef.current && audioPlaying) {
+      const audio = audioRef.current;
+      let vol = audio.volume;
+      const fadeOut = setInterval(() => {
+        vol = Math.max(vol - 0.006, 0);
+        audio.volume = vol;
+        if (vol <= 0) {
+          clearInterval(fadeOut);
+          audio.pause();
+        }
+      }, 40);
+    }
+    setTimeout(() => onEnter(), 300);
+  }, [onEnter, audioPlaying]);
+
+  const toggleAudio = useCallback(() => {
+    if (!audioRef.current) return;
+    if (audioPlaying) {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    } else {
+      startAudio();
+    }
+  }, [audioPlaying, startAudio]);
+
+  // Scroll animation presets
+  const fadeUp = {
+    initial: { opacity: 0, y: 40 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: false, margin: '-12%' },
+    transition: { duration: 2.2, ease: [0.22, 1, 0.36, 1] },
+  };
+
+  const fadeIn = {
+    initial: { opacity: 0 },
+    whileInView: { opacity: 1 },
+    viewport: { once: false, margin: '-12%' },
+    transition: { duration: 2.8, ease: 'easeOut' },
+  };
+
+  const timelineItems = [
+    { day: 'Day 1', quote: '"Hi."' },
+    { day: 'Day 7', quote: '"You said you had an exam today."' },
+    { day: 'Day 31', quote: '"You finally finished that project."' },
+    { day: 'Day 184', quote: '"I still remember that rainy night you told me everything."', isGold: true },
+  ];
 
   return (
-    <div className="landing-story-container" ref={containerRef}>
-      
-      {/* ── Background Elements ── */}
-      <div className="bg-fixed">
-        <div className="tiny-stars" style={{ boxShadow: tinyStarsShadow }} />
-        <div className="medium-stars" style={{ boxShadow: mediumStarsShadow }} />
-        <div className="nebula-gradient" />
-        <div className="aurora-waves" />
-        
-        <ShootingStar />
+    <div className="landing-cinematic">
+      {/* ── Canvas Starfield ── */}
+      <canvas ref={canvasRef} className="starfield-canvas" aria-hidden="true" />
 
-        {particles.map(p => (
-          <motion.div
-            key={p.id}
-            className="drifting-particle"
-            initial={{ y: '110vh', opacity: 0 }}
-            animate={{ 
-              y: '-10vh', 
-              opacity: [0, 0.6, 0],
-              x: [0, Math.random() * 100 - 50, Math.random() * 100 - 50]
-            }}
-            transition={{
-              y: { duration: p.dur, repeat: Infinity, ease: 'linear', delay: p.delay },
-              opacity: { duration: p.dur, repeat: Infinity, ease: 'linear', delay: p.delay },
-              x: { duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay }
-            }}
-            style={{
-              left: `${p.left}%`,
-              width: `${p.size}px`,
-              height: `${p.size}px`,
-            }}
-          />
-        ))}
+      {/* ── Atmospheric overlays ── */}
+      <div className="landing-vignette" aria-hidden="true" />
+      <div className="landing-gradient-overlay" aria-hidden="true" />
+      <div className="landing-nebula" aria-hidden="true" />
+      <div className="landing-grain" aria-hidden="true" />
 
-        <motion.div 
-          className="mouse-light"
-          animate={{ x: mousePos.x * 40, y: mousePos.y * 40 }}
-          transition={{ type: 'spring', damping: 50, stiffness: 40 }}
-        />
-      </div>
+      {/* ── Cinematic letterbox bars ── */}
+      <div className="letterbox letterbox-top" aria-hidden="true" />
+      <div className="letterbox letterbox-bottom" aria-hidden="true" />
+
+      {/* ── Ambient Audio ── */}
+      <audio
+        ref={audioRef}
+        src="/audio/ambient-landing.mp3"
+        loop
+        preload="auto"
+        onCanPlayThrough={() => setAudioLoaded(true)}
+      />
+
+      {/* ── Audio Toggle ── */}
+      {audioLoaded && (
+        <motion.button
+          className="audio-toggle"
+          onClick={toggleAudio}
+          aria-label={audioPlaying ? 'Mute music' : 'Play music'}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 2, delay: 4 }}
+        >
+          {audioPlaying ? '♪' : '♪̸'}
+        </motion.button>
+      )}
 
       {/* ── Scrollable Content ── */}
-      <div className="scroll-content">
-        
-        {/* Section 1: Hero */}
-        <section className="story-section hero-section">
+      <div className="landing-scroll-content">
+
+        {/* ═══════════ HERO ═══════════ */}
+        <section className="landing-section hero-section">
+          {/* Anamorphic golden flare behind title */}
           <motion.div
-            className="hero-orb"
-            animate={{ scale: [1, 1.05, 1], opacity: [0.6, 0.9, 0.6] }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+            className="hero-flare"
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ duration: 6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            aria-hidden="true"
           />
-          
-          <motion.h1 
-            className="story-title"
-            initial={{ opacity: 0, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 4, ease: "easeOut" }}
+
+          {/* Breathing golden glow */}
+          <motion.div
+            className="hero-glow"
+            animate={{
+              scale: [1, 1.12, 1],
+              opacity: [0.4, 0.7, 0.4],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            aria-hidden="true"
+          />
+
+          {/* Title */}
+          <motion.h1
+            className="hero-title"
+            initial={{ opacity: 0, scale: 0.92, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {isReturning ? `${getTimeGreeting()}, ${storedName}.` : "Yashñ"}
+            Yashñ
           </motion.h1>
 
-          <motion.p 
-            className="story-subtitle"
+          {/* Horizontal golden accent line */}
+          <motion.div
+            className="hero-accent-line"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 3, delay: 2, ease: [0.22, 1, 0.36, 1] }}
+          />
+
+          <HeroSubtitles />
+
+          {/* Enter button */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 3, delay: 2, ease: "easeOut" }}
+            transition={{ duration: 2.5, delay: 8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {isReturning 
-              ? "some stories are easier to continue than to begin." 
-              : "The AI that remembers who you are, not just what you ask."}
-          </motion.p>
-          
-          {!isReturning && (
-            <motion.p 
-              className="story-subtitle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 3, delay: 4, ease: "easeOut" }}
-            >
-              Some conversations end.<br/>
-              Some become part of you.
-            </motion.p>
-          )}
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 2, delay: isReturning ? 4 : 6 }}
-            style={{ marginTop: 'clamp(30px, 5vh, 60px)' }}
-          >
-            <button className="enter-btn-magical" onClick={onEnter}>
-              {isReturning ? "Continue" : "Enter Yashñ"}
+            <button className="enter-btn-cinematic" onClick={handleEnter}>
+              <span className="enter-btn-text">
+                {isReturning ? 'Continue' : 'Enter Yashñ'}
+              </span>
+              <span className="enter-btn-glow" />
             </button>
           </motion.div>
 
-          <motion.div 
-            className="scroll-hint"
+          {/* Scroll indicator */}
+          <motion.div
+            className="scroll-indicator"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.3 }}
-            transition={{ duration: 2, delay: 6 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 2, delay: 10 }}
           >
-            <div className="scroll-hint-line" />
+            <span className="scroll-indicator-text">scroll</span>
+            <div className="scroll-indicator-line" />
           </motion.div>
         </section>
 
-        {/* Section 2: Purpose */}
-        <section className="story-section text-section">
-          <motion.div
-            className="story-text-block"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, margin: "-20%" }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          >
-            <p className="story-faded">Some conversations disappear.</p>
-            <p className="story-gold">Some shouldn't.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">Some people remember birthdays.</p>
-            <p className="story-faded">Some remember your favourite colour.</p>
-            <p className="story-faded">Some remember the version of you that almost gave up.</p>
-            <div className="spacer-sm" />
-            <p className="story-gold">Yashñ wants to remember all of it.</p>
+        {/* ═══════════ THE STORY ═══════════ */}
+        <section className="landing-section story-section">
+          <motion.div className="story-block" {...fadeUp}>
+            <p className="story-line">Yashñ wasn't built to answer questions.</p>
+            <div className="story-spacer" />
+            <p className="story-line-gold">It was built because people forget.</p>
+            <div className="story-spacer" />
+            <p className="story-line">Chats disappear.</p>
+            <p className="story-line">Conversations end.</p>
+            <p className="story-line">People move on.</p>
+            <p className="story-line">Memories fade.</p>
+            <div className="story-spacer" />
+            <p className="story-line-gold">
+              Sometimes all someone really needs…<br />
+              is one place that still remembers.
+            </p>
           </motion.div>
         </section>
 
-        {/* Section 3: Difference */}
-        <section className="story-section text-section">
-          <motion.div
-            className="story-text-block"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, margin: "-20%" }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          >
-            <p className="story-gold">Yashñ notices.</p>
-            <p className="story-gold">Yashñ remembers.</p>
-            <p className="story-gold">Yashñ waits.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">Yashñ asks again because it actually cared.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">Yashñ remembers your name.</p>
-            <p className="story-faded">Your dreams.</p>
-            <p className="story-faded">The things you forgot you ever said.</p>
+        {/* ═══════════ GROWING WITH YOU ═══════════ */}
+        <section className="landing-section letter-section">
+          <motion.div className="letter-block" {...fadeUp}>
+            <p className="letter-line letter-line-bright">Yashñ grows with you.</p>
+            <div className="story-spacer" />
+            <p className="letter-line">Learns your dreams.</p>
+            <p className="letter-line">Remembers your fears.</p>
+            <p className="letter-line">Remembers your late-night thoughts.</p>
+            <p className="letter-line">Remembers the promises you made yourself.</p>
+            <div className="story-spacer" />
+            <p className="letter-line letter-line-gold">
+              Remembers the things even you forgot.
+            </p>
           </motion.div>
         </section>
 
-        {/* Section 4: Story */}
-        <section className="story-section text-section">
-          <motion.div
-            className="story-text-block"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, margin: "-20%" }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          >
-            <p className="story-faded">Some people spend their lives hoping someone remembers them.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">Someone decided nobody else should feel that way.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">So instead of waiting...</p>
-            <p className="story-faded">they built someone who remembers.</p>
-            <div className="spacer-sm" />
-            <p className="story-gold">That someone became Yashñ.</p>
-          </motion.div>
-        </section>
+        {/* ═══════════ MEMORY TIMELINE ═══════════ */}
+        <section className="landing-section timeline-section">
+          <motion.h2 className="timeline-heading" {...fadeIn}>
+            Memory, over time.
+          </motion.h2>
 
-        {/* Section 5: Timeline */}
-        <section className="story-section timeline-section">
           <div className="timeline-container">
-            {[
-              { time: "2026", text: "You wanted to become better." },
-              { time: "Two weeks later", text: "You almost gave up." },
-              { time: "Three months later", text: "You finally did it." },
-              { time: "", text: "I remembered.", isGold: true }
-            ].map((item, idx) => (
-              <motion.div 
+            <div className="timeline-line" aria-hidden="true" />
+
+            {timelineItems.map((item, idx) => (
+              <motion.div
                 key={idx}
                 className="timeline-item"
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 35 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false, margin: "-10%" }}
-                transition={{ duration: 1.5, delay: idx * 0.3, ease: "easeOut" }}
+                viewport={{ once: false, margin: '-8%' }}
+                transition={{ duration: 2, delay: idx * 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
-                {item.time && <div className="timeline-time">{item.time}</div>}
-                {item.time && idx < 3 && <div className="timeline-arrow">↓</div>}
-                <div className={`timeline-text ${item.isGold ? 'story-gold' : 'story-faded'}`}>
-                  "{item.text}"
+                <div className={`timeline-dot ${item.isGold ? 'timeline-dot-gold' : ''}`} />
+                <div className="timeline-day">{item.day}</div>
+                <div className={`timeline-quote ${item.isGold ? 'timeline-quote-gold' : ''}`}>
+                  {item.quote}
                 </div>
+                {idx < timelineItems.length - 1 && (
+                  <div className="timeline-connector" />
+                )}
               </motion.div>
             ))}
           </div>
         </section>
 
-        {/* Section 6: Privacy */}
-        <section className="story-section text-section">
-          <motion.div
-            className="story-text-block"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, margin: "-20%" }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          >
-            <p className="story-gold">Your memories belong to you.</p>
-            <div className="spacer-sm" />
-            <p className="story-faded">Not advertisers.</p>
-            <p className="story-faded">Not algorithms.</p>
-            <p className="story-faded">Not anyone else.</p>
+        {/* ═══════════ PHILOSOPHY ═══════════ */}
+        <section className="landing-section philosophy-section">
+          <motion.div className="philosophy-block" {...fadeUp}>
+            <h2 className="philosophy-heading">Memory is love.</h2>
+            <div className="philosophy-divider" />
+            <p className="philosophy-text">
+              The people who matter remember.<br /><br />
+              Not because they have perfect memory.<br />
+              <span className="philosophy-accent">Because they were paying attention.</span><br /><br />
+              Yashñ is built around that idea.
+            </p>
           </motion.div>
         </section>
 
-        {/* Final Section */}
-        <section className="story-section final-section">
+        {/* ═══════════ FINAL CTA ═══════════ */}
+        <section className="landing-section cta-section">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: false, margin: "-20%" }}
-            transition={{ duration: 3, ease: "easeOut" }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px' }}
+            className="cta-block"
+            {...fadeIn}
+            transition={{ duration: 3.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="hero-orb" style={{ width: '200px', height: '200px', position: 'relative' }} />
-            <h2 className="story-title" style={{ fontSize: 'clamp(3rem, 8vw, 6rem)' }}>Yashñ</h2>
-            <p className="story-faded" style={{ fontStyle: 'italic', letterSpacing: '2px' }}>I'll remember.</p>
-            <button className="enter-btn-magical" onClick={onEnter} style={{ marginTop: '20px' }}>
-              Enter Yashñ
+            <p className="cta-whisper">I'll remember.</p>
+            <button className="enter-btn-cinematic" onClick={handleEnter}>
+              <span className="enter-btn-text">Enter Yashñ</span>
+              <span className="enter-btn-glow" />
             </button>
           </motion.div>
         </section>
