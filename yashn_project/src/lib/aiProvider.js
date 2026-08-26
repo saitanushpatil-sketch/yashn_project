@@ -1,7 +1,7 @@
 import { SOUL_PROMPT } from './soulPrompt';
 
 async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 10000 } = options;
+  const { timeout = 30000 } = options;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   
@@ -18,48 +18,10 @@ async function fetchWithTimeout(resource, options = {}) {
   }
 }
 
-async function fetchGroq(messages) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (!apiKey) throw new Error('No Groq API key');
-
-  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: messages
-    }),
-    timeout: 10000
-  });
-
-  if (!response.ok) throw new Error(`Groq HTTP error! status: ${response.status}`);
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-async function fetchOpenRouter(messages) {
-  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('No OpenRouter API key');
-
-  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-3.3-70b-instruct:free',
-      messages: messages
-    }),
-    timeout: 10000
-  });
-
-  if (!response.ok) throw new Error(`OpenRouter HTTP error! status: ${response.status}`);
-  const data = await response.json();
-  return data.choices[0].message.content;
+// Some models (like Qwen) wrap responses in <think>...</think> tags — strip them
+function cleanResponse(text) {
+  if (!text) return text;
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
 }
 
 async function fetchGemini(messages) {
@@ -86,18 +48,71 @@ async function fetchGemini(messages) {
     };
   }
 
-  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(requestBody),
-    timeout: 10000
+    timeout: 30000
   });
 
-  if (!response.ok) throw new Error(`Gemini HTTP error! status: ${response.status}`);
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Gemini HTTP error! status: ${response.status} — ${errorData}`);
+  }
   const data = await response.json();
   return data.candidates[0].content.parts[0].text;
+}
+
+async function fetchGroq(messages) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) throw new Error('No Groq API key');
+
+  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'qwen/qwen3.8-27b',
+      messages: messages
+    }),
+    timeout: 30000
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Groq HTTP error! status: ${response.status} — ${errorData}`);
+  }
+  const data = await response.json();
+  return cleanResponse(data.choices[0].message.content);
+}
+
+async function fetchOpenRouter(messages) {
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('No OpenRouter API key');
+
+  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'google/gemma-4-31b-it:free',
+      messages: messages
+    }),
+    timeout: 30000
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`OpenRouter HTTP error! status: ${response.status} — ${errorData}`);
+  }
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 export async function sendMessage(conversationHistory) {
@@ -107,7 +122,18 @@ export async function sendMessage(conversationHistory) {
     ...conversationHistory
   ];
 
-  // Try Groq
+  // Try Gemini first (most reliable, direct Google API)
+  try {
+    const geminiResponse = await fetchGemini(messages);
+    if (geminiResponse) {
+      console.log('[AI Provider] Responded via Gemini');
+      return geminiResponse;
+    }
+  } catch (error) {
+    console.error('[AI Provider] Gemini failed:', error);
+  }
+
+  // Try Groq second
   try {
     const groqResponse = await fetchGroq(messages);
     if (groqResponse) {
@@ -118,7 +144,7 @@ export async function sendMessage(conversationHistory) {
     console.error('[AI Provider] Groq failed:', error);
   }
 
-  // Try OpenRouter
+  // Try OpenRouter last
   try {
     const openRouterResponse = await fetchOpenRouter(messages);
     if (openRouterResponse) {
@@ -127,17 +153,6 @@ export async function sendMessage(conversationHistory) {
     }
   } catch (error) {
     console.error('[AI Provider] OpenRouter failed:', error);
-  }
-
-  // Try Gemini
-  try {
-    const geminiResponse = await fetchGemini(messages);
-    if (geminiResponse) {
-      console.log('[AI Provider] Responded via Gemini');
-      return geminiResponse;
-    }
-  } catch (error) {
-    console.error('[AI Provider] Gemini failed:', error);
   }
 
   // Fallback
