@@ -1,5 +1,9 @@
-/* ── Intro Animation ── */
+/* ══════════════════════════════════════════════════════════
+   Yashñ Intro Animation — Cinematic Film Opening
+   6-act sequence · Particles · Fog · Grain · Golden light
+   ══════════════════════════════════════════════════════════ */
 
+/* ── Full-screen container ── */
 .intro {
   position: fixed;
   inset: 0;
@@ -11,19 +15,88 @@
   overflow: hidden;
 }
 
-.intro-stars {
+/* ── Canvas particle field ── */
+.intro-canvas {
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
 }
 
-.intro-s {
+/* ── Deep cinematic vignette ── */
+.intro-vignette {
   position: absolute;
-  background: #D4AF37;
-  border-radius: 50%;
-  box-shadow: 0 0 5px #D4AF37;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 65% at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
 }
 
+/* ── Atmospheric fog layers ── */
+.intro-fog {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform, opacity;
+}
+
+.intro-fog-1 {
+  top: 20%;
+  left: 10%;
+  width: 60vw;
+  height: 35vh;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 175, 55, 0.06) 0%,
+    rgba(180, 140, 40, 0.02) 50%,
+    transparent 80%
+  );
+  transform: rotate(-10deg);
+}
+
+.intro-fog-2 {
+  bottom: 15%;
+  right: 5%;
+  width: 50vw;
+  height: 30vh;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 175, 55, 0.04) 0%,
+    rgba(140, 120, 50, 0.02) 50%,
+    transparent 80%
+  );
+  transform: rotate(8deg);
+}
+
+/* ── Breath line — horizontal golden line ── */
+.intro-breath-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(200px, 50vw, 500px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.15) 20%,
+    rgba(212, 175, 55, 0.5) 50%,
+    rgba(212, 175, 55, 0.15) 80%,
+    transparent 100%
+  );
+  z-index: 5;
+  transform-origin: center;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+/* ── Central orb system ── */
 .intro-center {
   position: absolute;
   top: 50%;
@@ -31,33 +104,71 @@
   transform: translate(-50%, -50%);
   width: 1px;
   height: 1px;
+  z-index: 4;
   pointer-events: none;
 }
 
-.intro-orb {
+.intro-orb-outer {
   position: absolute;
-  width: clamp(180px, 30vw, 300px);
-  height: clamp(180px, 30vw, 300px);
+  width: clamp(250px, 45vw, 450px);
+  height: clamp(250px, 45vw, 450px);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(212,175,55,0.3) 0%, transparent 60%);
-  filter: blur(35px);
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.08) 0%,
+    rgba(212, 175, 55, 0.03) 30%,
+    transparent 65%
+  );
+  filter: blur(50px);
 }
 
-.intro-orbit {
+.intro-orb-core {
   position: absolute;
-  width: 1px;
-  height: 1px;
-}
-
-.intro-orbit-dot {
-  background: #D4AF37;
+  width: clamp(80px, 15vw, 160px);
+  height: clamp(80px, 15vw, 160px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  box-shadow: 0 0 6px #D4AF37;
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.35) 0%,
+    rgba(212, 175, 55, 0.15) 30%,
+    rgba(212, 175, 55, 0.05) 60%,
+    transparent 80%
+  );
+  filter: blur(25px);
+  animation: orb-core-breathe 6s infinite ease-in-out;
 }
 
+@keyframes orb-core-breathe {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* Expanding pulse ring */
+.intro-orb-ring {
+  position: absolute;
+  width: clamp(100px, 18vw, 200px);
+  height: clamp(100px, 18vw, 200px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.05);
+}
+
+/* ── Title and text area ── */
 .intro-text {
   position: relative;
   z-index: 10;
@@ -65,29 +176,107 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: clamp(12px, 2vw, 20px);
+  gap: clamp(20px, 4vh, 40px);
 }
 
 .intro-title-wrap {
   display: flex;
-  gap: clamp(2px, 0.5vw, 6px);
+  gap: clamp(3px, 0.8vw, 8px);
+  position: relative;
 }
 
 .intro-letter {
+  position: relative;
   font-family: var(--font-heading);
-  font-size: clamp(4rem, 12vw, 8rem);
+  font-size: clamp(4.5rem, 14vw, 9rem);
   color: #D4AF37;
   font-weight: 300;
   letter-spacing: 4px;
-  text-shadow: 0 0 50px rgba(212,175,55,0.35);
+  text-shadow:
+    0 0 40px rgba(212, 175, 55, 0.25),
+    0 0 80px rgba(212, 175, 55, 0.1),
+    0 0 120px rgba(212, 175, 55, 0.05);
   display: inline-block;
 }
 
-.intro-sub {
+/* Golden shimmer trail behind each letter */
+.intro-letter-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(
+    circle,
+    rgba(212, 175, 55, 0.3) 0%,
+    transparent 70%
+  );
+  filter: blur(20px);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Poetic subtitle area ── */
+.intro-poetic-area {
+  min-height: clamp(50px, 8vh, 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro-poetic {
   font-family: var(--font-body);
-  font-size: clamp(1rem, 2vw, 1.4rem);
-  color: rgba(255,255,255,0.4);
+  font-size: clamp(0.95rem, 2.2vw, 1.3rem);
+  color: rgba(255, 255, 255, 0.35);
   font-weight: 300;
   letter-spacing: 3px;
+  font-style: italic;
   margin: 0;
+  text-align: center;
+  max-width: min(500px, 80vw);
+}
+
+/* ── Film grain overlay ── */
+.intro-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  animation: grain-shift 0.5s steps(4) infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 3px); }
+  50% { transform: translate(3px, -1px); }
+  75% { transform: translate(-1px, -2px); }
+  100% { transform: translate(2px, 1px); }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .intro-fog,
+  .intro-grain {
+    animation: none !important;
+    display: none;
+  }
+  .intro-orb-core {
+    animation: none !important;
+  }
+  .intro-orb-ring {
+    display: none;
+  }
+}
+
+/* ── Mobile refinements ── */
+@media (max-width: 480px) {
+  .intro-letter {
+    letter-spacing: 2px;
+  }
+  .intro-breath-line {
+    width: 60vw;
+  }
 }
