@@ -1,7 +1,7 @@
 import { SOUL_PROMPT } from './soulPrompt';
 
 async function fetchWithTimeout(resource, options = {}) {
-  const { timeout = 30000 } = options;
+  const { timeout = 15000 } = options;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   
@@ -39,6 +39,10 @@ async function fetchGemini(messages) {
 
   const requestBody = {
     contents: geminiMessages,
+    generationConfig: {
+      maxOutputTokens: 512,
+      temperature: 0.9,
+    }
   };
 
   if (systemInstruction) {
@@ -48,13 +52,14 @@ async function fetchGemini(messages) {
     };
   }
 
-  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
+  // Use gemini-2.0-flash-lite for faster responses
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(requestBody),
-    timeout: 30000
+    timeout: 15000
   });
 
   if (!response.ok) {
@@ -76,10 +81,12 @@ async function fetchGroq(messages) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3.8-27b',
-      messages: messages
+      model: 'llama-3.1-8b-instant',
+      messages: messages,
+      max_tokens: 512,
+      temperature: 0.9,
     }),
-    timeout: 30000
+    timeout: 12000
   });
 
   if (!response.ok) {
@@ -102,9 +109,10 @@ async function fetchOpenRouter(messages) {
     },
     body: JSON.stringify({
       model: 'google/gemma-4-31b-it:free',
-      messages: messages
+      messages: messages,
+      max_tokens: 512,
     }),
-    timeout: 30000
+    timeout: 15000
   });
 
   if (!response.ok) {
@@ -117,34 +125,46 @@ async function fetchOpenRouter(messages) {
 
 export async function sendMessage(conversationHistory) {
   // Prepend SOUL_PROMPT as the system message
+  // Keep only the last 20 messages for speed
+  const recentHistory = conversationHistory.slice(-20);
   const messages = [
     { role: 'system', content: SOUL_PROMPT },
-    ...conversationHistory
+    ...recentHistory
   ];
 
-  // Try Gemini first (most reliable, direct Google API)
-  try {
-    const geminiResponse = await fetchGemini(messages);
-    if (geminiResponse) {
-      console.log('[AI Provider] Responded via Gemini');
-      return geminiResponse;
-    }
-  } catch (error) {
-    console.error('[AI Provider] Gemini failed:', error);
+  // Race: Try Gemini and Groq simultaneously, take whichever responds first
+  const providers = [];
+
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+
+  if (geminiKey) {
+    providers.push(
+      fetchGemini(messages)
+        .then(r => { console.log('[AI Provider] Responded via Gemini'); return r; })
+        .catch(e => { console.error('[AI Provider] Gemini failed:', e); throw e; })
+    );
   }
 
-  // Try Groq second
-  try {
-    const groqResponse = await fetchGroq(messages);
-    if (groqResponse) {
-      console.log('[AI Provider] Responded via Groq');
-      return groqResponse;
-    }
-  } catch (error) {
-    console.error('[AI Provider] Groq failed:', error);
+  if (groqKey) {
+    providers.push(
+      fetchGroq(messages)
+        .then(r => { console.log('[AI Provider] Responded via Groq'); return r; })
+        .catch(e => { console.error('[AI Provider] Groq failed:', e); throw e; })
+    );
   }
 
-  // Try OpenRouter last
+  // Race the available providers — fastest wins
+  if (providers.length > 0) {
+    try {
+      const result = await Promise.any(providers);
+      if (result) return result;
+    } catch (e) {
+      console.error('[AI Provider] All raced providers failed:', e);
+    }
+  }
+
+  // Fallback to OpenRouter
   try {
     const openRouterResponse = await fetchOpenRouter(messages);
     if (openRouterResponse) {
