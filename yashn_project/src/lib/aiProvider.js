@@ -52,8 +52,7 @@ async function fetchGemini(messages) {
     };
   }
 
-  // Use gemini-2.0-flash-lite for faster responses
-  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -81,7 +80,7 @@ async function fetchGroq(messages) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model: 'qwen/qwen3.8-27b',
       messages: messages,
       max_tokens: 512,
       temperature: 0.9,
