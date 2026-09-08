@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './IntroAnimation.css';
 
@@ -40,7 +40,7 @@ function useStarfieldCanvas(canvasRef, phaseRef) {
 
     // Generate 400 stars scattered across the screen
     const STAR_COUNT = 400;
-    starsRef.current = Array.from({ length: STAR_COUNT }, (_, i) => {
+    starsRef.current = Array.from({ length: STAR_COUNT }, () => {
       const angle = Math.random() * Math.PI * 2;
       const distFromCenter = 20 + Math.random() * Math.min(w, h) * 0.35;
       const isLarge = Math.random() < 0.08;
@@ -352,7 +352,7 @@ function useStarfieldCanvas(canvasRef, phaseRef) {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [canvasRef]); // only mount once, phaseRef is a ref
+  }, [canvasRef, phaseRef]); // refs are stable; this effect still mounts once
 }
 
 /* ═══════════════════════════════════════════════════════════════

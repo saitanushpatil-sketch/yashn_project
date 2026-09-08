@@ -1,4 +1,4 @@
-import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 
 /**
  * AudioEngine — Redesigned for pure emotional storytelling.
@@ -37,8 +37,8 @@ const AudioEngine = forwardRef((props, ref) => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     nodesRef.current.forEach(n => {
-      try { n.stop?.(); } catch(e) {}
-      try { n.disconnect?.(); } catch(e) {}
+      try { n.stop?.(); } catch {}
+      try { n.disconnect?.(); } catch {}
     });
     nodesRef.current = [];
   };

@@ -54,7 +54,7 @@ function App() {
     try {
       const response = await sendMessage(newHistory);
       setMessages([...newHistory, { role: 'assistant', content: response }]);
-    } catch (e) {
+    } catch {
       setMessages([...newHistory, {
         role: 'assistant',
         content: "I'm having trouble finding the words right now — give me a moment and try again?"

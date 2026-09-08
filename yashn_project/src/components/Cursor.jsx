@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export default function Cursor() {
   const [pos, setPos] = useState({ x: -100, y: -100 });
   const [hovering, setHovering] = useState(false);
-  const trailRef = useRef([]);
 
   useEffect(() => {
     const isDesktop = window.matchMedia('(pointer: fine)').matches;

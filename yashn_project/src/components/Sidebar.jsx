@@ -76,7 +76,7 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
-              {menuItems.map((item, index) => (
+              {menuItems.map((item) => (
                 <motion.button
                   key={item.label}
                   whileHover={{ x: 8, backgroundColor: 'var(--glass-bg)' }}

@@ -52,7 +52,7 @@ async function fetchGemini(messages) {
     };
   }
 
-  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -107,7 +107,9 @@ async function fetchOpenRouter(messages) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'google/gemma-4-31b-it:free',
+      // Let OpenRouter choose an available free text model instead of pinning
+      // the app to a model that may be removed or renamed.
+      model: 'openrouter/free',
       messages: messages,
       max_tokens: 512,
     }),
