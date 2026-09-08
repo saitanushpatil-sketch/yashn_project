@@ -138,6 +138,16 @@
   flex-direction: column;
 }
 
+.chat-error {
+  position: relative;
+  z-index: 2;
+  margin: 0 clamp(16px, 3vw, 28px) 4px;
+  color: rgba(255, 190, 150, 0.78);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
 /* Stars inside chat */
 .chat-bg-stars {
   position: absolute;

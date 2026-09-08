@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import './NamePrompt.css';
+import { saveUserName } from '../lib/storage';
 
 /**
  * NamePrompt — "What should I call you?"
@@ -21,14 +22,14 @@ export default function NamePrompt({ onComplete }) {
     e?.preventDefault();
     const trimmed = name.trim();
     if (trimmed) {
-      localStorage.setItem('yashn_username', trimmed);
+      saveUserName(trimmed);
       setSubmitted(true);
       setTimeout(() => onComplete(trimmed), 2500);
     }
   };
 
   const handleGuest = () => {
-    localStorage.setItem('yashn_username', 'Guest');
+    saveUserName('Guest');
     setSubmitted(true);
     setTimeout(() => onComplete('Guest'), 2000);
   };

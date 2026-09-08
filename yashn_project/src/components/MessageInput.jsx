@@ -80,6 +80,9 @@ export default function MessageInput({ onSend, disabled }) {
           disabled={disabled}
           rows={1}
           className="input-field"
+          maxLength={4000}
+          aria-label="Message Yashñ"
+          placeholder=""
         />
 
         <motion.button

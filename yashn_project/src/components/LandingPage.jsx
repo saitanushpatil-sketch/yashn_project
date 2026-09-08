@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './LandingPage.css';
+import { loadUserName } from '../lib/storage';
 
 /* ═══════════════════════════════════════════════════════════════
    Canvas Starfield — dense, layered, with depth and parallax
@@ -203,7 +204,7 @@ export default function LandingPage({ onEnter }) {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioLoaded, setAudioLoaded] = useState(false);
 
-  const storedName = localStorage.getItem('yashn_username');
+  const storedName = loadUserName();
   const isReturning = storedName && storedName !== 'Guest';
 
   useStarfield(canvasRef);

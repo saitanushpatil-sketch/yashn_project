@@ -1,16 +1,26 @@
-# React + Vite
+# Yashñ
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Yashñ is a cinematic AI companion built with React, Vite, Framer Motion, and a Vercel serverless API.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+~~~bash
+npm install
+cp .env.example .env
+npm run dev
+~~~
 
-## React Compiler
+Set at least one server-only provider key in `.env`. Do not use `VITE_` for AI keys: Vite bundles `VITE_*` variables into the browser.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Production
 
-## Expanding the Oxlint configuration
+Deploy the project root to Vercel and configure the same environment variables in the Vercel dashboard. The `/api/chat` function validates message shape and size, rejects unexpected origins, applies a lightweight per-IP limit, and keeps provider credentials on the server.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The client keeps a bounded conversation history in local storage so a refresh does not erase the current conversation. That data is local to the device; add authenticated, encrypted server persistence before using this for multi-device or regulated data.
+
+## Checks
+
+~~~bash
+npm run build
+npm run lint
+~~~

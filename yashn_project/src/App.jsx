@@ -8,13 +8,13 @@ import Cursor from './components/Cursor';
 import AudioEngine from './components/AudioEngine';
 import Sidebar from './components/Sidebar';
 import { sendMessage } from './lib/aiProvider';
-import { saveConversation, loadConversation, clearConversation } from './lib/storage';
+import { saveConversation, loadConversation, clearConversation, loadUserName } from './lib/storage';
 import { Menu, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 
 function App() {
-  const storedName = localStorage.getItem('yashn_username');
+  const storedName = loadUserName();
   const [appState, setAppState] = useState('LANDING');
   const [userName, setUserName] = useState(storedName || null);
 
@@ -22,6 +22,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const audioRef = useRef(null);
 
@@ -46,6 +47,7 @@ function App() {
   }, [hasInteracted, appState]);
 
   const handleSend = async (content) => {
+    setErrorMessage('');
     const userMessage = { role: 'user', content };
     const newHistory = [...messages, userMessage];
     setMessages(newHistory);
@@ -54,11 +56,12 @@ function App() {
     try {
       const response = await sendMessage(newHistory);
       setMessages([...newHistory, { role: 'assistant', content: response }]);
-    } catch {
+    } catch (error) {
       setMessages([...newHistory, {
         role: 'assistant',
-        content: "I'm having trouble finding the words right now — give me a moment and try again?"
+        content: "ruko. something interrupted me. your message is still here — try again in a moment?"
       }]);
+      setErrorMessage(error?.message || 'The conversation could not be completed.');
     } finally {
       setIsTyping(false);
     }
@@ -193,6 +196,19 @@ function App() {
                 isTyping={isTyping}
                 userName={userName}
               />
+              <AnimatePresence>
+                {errorMessage && (
+                  <motion.p
+                    className="chat-error"
+                    role="status"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    {errorMessage}
+                  </motion.p>
+                )}
+              </AnimatePresence>
               <MessageInput
                 onSend={handleSend}
                 disabled={isTyping}
